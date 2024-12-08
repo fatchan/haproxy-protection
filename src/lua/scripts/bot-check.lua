@@ -297,8 +297,8 @@ function _M.view(applet)
 								applet:add_header(
 									"set-cookie",
 									string.format(
-										--"_basedflare_pow=%s; Expires=%s; Path=/; Domain=.%s; SameSite=Strict; HttpOnly;%s",
-										"_basedflare_pow=%s; Expires=%s; Path=/; Domain=%s; SameSite=Strict; %s",
+										--"_basedflare_pow=%s; Expires=%s; Path=/; Domain=.%s; SameSite=Lax; HttpOnly;%s",
+										"_basedflare_pow=%s; Expires=%s; Path=/; Domain=%s; SameSite=Lax; %s",
 										combined_cookie,
 										expiry_date_p,
 										applet.headers['host'][0],
@@ -361,7 +361,7 @@ function _M.view(applet)
 				applet:add_header(
 					"set-cookie",
 					string.format(
-						"_basedflare_captcha=%s; Expires=%s; Path=/; Domain=%s; SameSite=Strict; HttpOnly;%s",
+						"_basedflare_captcha=%s; Expires=%s; Path=/; Domain=%s; SameSite=Lax; HttpOnly;%s",
 						combined_cookie,
 						expiry_date_c,
 						applet.headers['host'][0],
