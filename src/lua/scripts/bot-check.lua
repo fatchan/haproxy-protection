@@ -157,7 +157,7 @@ function _M.view(applet)
 
 		local ddos_map_lookup = ddos_map:lookup(host..path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
-			ddos_map_json = json.decode(ddos_map_lookup)
+			local ddos_map_json = json.decode(ddos_map_lookup)
 			if ddos_map_json.m == 2 then
 				captcha_enabled = true
 			end
@@ -166,7 +166,7 @@ function _M.view(applet)
 		-- return simple json if they send accept: application/json header
 		local accept_header = applet.headers['accept']
 		if accept_header ~= nil and accept_header[0] == 'application/json' then
-			local_pow_combined = string.format('%s#%d#%s#%s', ddos_config["pt"], math.ceil(ddos_config["pd"]/8), argon_time, argon_kb)
+			local local_pow_combined = string.format('%s#%d#%s#%s', ddos_config["pt"], math.ceil(ddos_config["pd"]/8), argon_time, argon_kb)
 			response_body = "{\"ch\":\""..combined_challenge.."\",\"ca\":"..(captcha_enabled and "true" or "false")..",\"pow\":\""..local_pow_combined.."\"}"
 			applet:set_status(403)
 			applet:add_header("content-type", "application/json; charset=utf-8")
@@ -468,7 +468,7 @@ function _M.decide_checks_necessary(txn)
 	local path = txn.sf:path();
 	local ddos_map_lookup = ddos_map:lookup(host..path) or ddos_map:lookup(host)
 	if ddos_map_lookup ~= nil then
-		ddos_map_json = json.decode(ddos_map_lookup)
+		local ddos_map_json = json.decode(ddos_map_lookup)
 		if ddos_map_json.m == 0
 			or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
 			return
