@@ -80,9 +80,11 @@ const wasmSupported = (() => {
 function clearCookiesForDomains(domain) {
 	const parts = ['www', ...domain.split('.')];
 	for (let i = 0; i < parts.length - 1; i++) {
-		const subdomain = parts.slice(i).join('.');
-		document.cookie = `_basedflare_pow=; Max-Age=-9999999; Path=/; Domain=.${subdomain}`;
-		document.cookie = `_basedflare_captcha=; Max-Age=-9999999; Path=/; Domain=.${subdomain}`;
+		try {
+			const subdomain = parts.slice(i).join('.');
+			document.cookie = `_basedflare_pow=; Max-Age=-9999999; Path=/; Domain=.${subdomain}`;
+			document.cookie = `_basedflare_captcha=; Max-Age=-9999999; Path=/; Domain=.${subdomain}`;
+		} catch { /* ignore "rejected for domain" errors in FF, but continue the loop and try each subdomain anyway. */ }
 	}
 	location.reload();
 }
