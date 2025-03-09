@@ -46,8 +46,8 @@ services:
 
   nginx:
     ports:
-      - 81:80
-      - 82:80
+      - 1081:80
+      - 1082:80
     image: "nginx:latest"
     volumes:
       - ./nginx:/usr/share/nginx/html

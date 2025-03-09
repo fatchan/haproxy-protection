@@ -1,1 +1,1 @@
-localhost {"pd":27,"pt":"sha256","cex":999,"cip":false}
+localhost {"pd":27,"pt":"sha256","cex":999,"cip":false,"js":true}

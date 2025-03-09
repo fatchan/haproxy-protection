@@ -187,28 +187,30 @@ function _M.view(applet)
 				templates.pow_section,
 				ll["This process is automatic, please wait a moment..."]
 			)
-			local noscript_extra
-			local noscript_prompt
-			if ddos_config["pt"] == "argon2" then
-				noscript_extra = templates.noscript_extra_argon2
-				noscript_prompt = ll["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
-			else
-				noscript_extra = templates.noscript_extra_sha256
-				noscript_prompt = ll["Run this in a linux terminal (requires <code>perl</code>):"]
+			if ddos_config["js"] ~= false then
+				local noscript_extra
+				local noscript_prompt
+				if ddos_config["pt"] == "argon2" then
+					noscript_extra = templates.noscript_extra_argon2
+					noscript_prompt = ll["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
+				else
+					noscript_extra = templates.noscript_extra_sha256
+					noscript_prompt = ll["Run this in a linux terminal (requires <code>perl</code>):"]
+				end
+				noscript_extra_body = string.format(
+					noscript_extra,
+					ll["No JavaScript?"],
+					noscript_prompt,
+					user_key,
+					challenge_hash,
+					expiry,
+					signature,
+					math.ceil(ddos_config["pd"]/8),
+					argon_time,
+					argon_kb,
+					ll["Paste the script output into the box and submit:"]
+				)
 			end
-			noscript_extra_body = string.format(
-				noscript_extra,
-				ll["No JavaScript?"],
-				noscript_prompt,
-				user_key,
-				challenge_hash,
-				expiry,
-				signature,
-				math.ceil(ddos_config["pd"]/8),
-				argon_time,
-				argon_kb,
-				ll["Paste the script output into the box and submit:"]
-			)
 		end
 
 		-- sub in the body sections
