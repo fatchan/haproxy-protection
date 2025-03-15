@@ -47,10 +47,16 @@ services:
   nginx:
     ports:
       - 1081:80
-      - 1082:80
     image: "nginx:latest"
     volumes:
       - ./nginx:/usr/share/nginx/html
+
+  nginx2:
+    ports:
+      - 1082:80
+    image: "nginx:latest"
+    volumes:
+      - ./nginx2:/usr/share/nginx/html
 
   varnish:
     network_mode: host
