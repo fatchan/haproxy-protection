@@ -8,6 +8,7 @@ local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 function get_server_names(txn)
     local key = txn.sf:hdr("Host")
     local user_cn = txn:get_var("txn.xcn") or "XX"
+    print(user_cn)
     local value = backends_map:lookup(key or "")
     if value ~= nil then
         local filtered_backends = {}
@@ -25,10 +26,14 @@ function get_server_names(txn)
         end
         -- Randomly select from filtered backends if available
         if #filtered_backends > 0 then
-            return filtered_backends[math.random(#filtered_backends)]
+            local s = filtered_backends[math.random(#filtered_backends)]
+            print(s)
+            return s
         elseif #all_backends > 0 then
             -- If no filtered backends, randomly select from all backends
-            return all_backends[math.random(#all_backends)]
+            local s = all_backends[math.random(#all_backends)]
+            print(s)
+            return s
         end
     end
     return ""
