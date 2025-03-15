@@ -60,7 +60,7 @@ sub vcl_recv {
 	}
 
 	# honor cache control headers for "no-cache" or "no-store"
-	if (req.http.Cache-Control ~ "no-cache" || req.http.Cache-Control ~ "no-store") {
+	if (req.http.Cache-Control ~ "no-cache" || req.http.Cache-Control ~ "no-store" || req.url ~ "\.m3u8$") {
 		return (pass);
 	}
 
@@ -115,6 +115,8 @@ sub vcl_backend_response {
 		} else {
 			# default ttl if no cache header
 			set beresp.ttl = 1m;
+			set beresp.uncacheable = true;
+			return (pass);
 		}
 		# grace period for stale content
 		set beresp.grace = 10m;
