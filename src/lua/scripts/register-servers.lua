@@ -19,6 +19,7 @@ function setup_servers()
 	local handle = io.open("/etc/haproxy/map/hosts.map", "r")
 	local line = handle:read("*line")
 	local verify_backend_ssl = os.getenv("VERIFY_BACKEND_SSL")
+	local verify_none = os.getenv("VERIFY_BACKEND_SSL_VERIFYNONE")
 	local counter = 1
 	-- NOTE: using tcp socket to interact with runtime API because lua can't add servers
 	local tcp = core.tcp();
@@ -40,9 +41,15 @@ function setup_servers()
 		local server_name = "servers/websrv" .. counter
 		--NOTE: if you have a proper CA setup,
 		if verify_backend_ssl ~= nil then
-			tcp:send(string.format(
-				"add server %s %s check ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
-				server_name, backend_host))
+			if verify_none ~= nil then -- for development use only
+				tcp:send(string.format(
+					"add server %s %s check ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
+					server_name, backend_host))
+			else
+				tcp:send(string.format(
+					"add server %s %s check ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
+					server_name, backend_host))
+			end
 		else
 			tcp:send(string.format("add server %s %s;", server_name, backend_host))
 		end

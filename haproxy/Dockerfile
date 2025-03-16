@@ -5,7 +5,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # roughly, https://salsa.debian.org/haproxy-team/haproxy/-/blob/732b97ae286906dea19ab5744cf9cf97c364ac1d/debian/haproxy.postinst#L5-6
 RUN set -eux; \
@@ -25,11 +25,11 @@ ENV DATAPLANEAPI_URL https://github.com/haproxytech/dataplaneapi/releases/downlo
 RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
-	apt-get update && apt-get install -y --no-install-recommends \
+	apt update -yq && apt-get install -y --no-install-recommends \
 		ca-certificates \
 		gcc \
 		libc6-dev \
-		liblua5.3-dev \
+		liblua5.4-dev \
 		libpcre2-dev \
 		libssl-dev \
 		make \
@@ -37,7 +37,9 @@ RUN set -eux; \
 		zlib1g-dev \
 		luarocks \
 	; \
+	update-ca-certificates; \
 	rm -rf /var/lib/apt/lists/*; \
+	chmod 777 /etc/ssl/certs/ca-certificates.crt; \
 #	\
 #	wget -O dataplaneapi_Linux_x86_64.tar.gz "$DATAPLANEAPI_URL"; \
 #	tar -zxvf dataplaneapi_Linux_x86_64.tar.gz; \
@@ -53,7 +55,7 @@ RUN set -eux; \
 	makeOpts=' \
 		TARGET=linux-glibc \
 		USE_GETADDRINFO=1 \
-		USE_LUA=1 LUA_INC=/usr/include/lua5.3 \
+		USE_LUA=1 LUA_INC=/usr/include/lua5.4 \
 		USE_OPENSSL=1 \
 		USE_PCRE2=1 USE_PCRE2_JIT=1 \
 		USE_ZLIB=1 \
@@ -82,7 +84,7 @@ RUN set -eux; \
 		| sort -u \
 		| xargs -r apt-mark manual \
 	; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+	# apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
 	\
 # smoke test
 	haproxy -v
@@ -92,13 +94,19 @@ RUN set -eux; \
 # "when the SIGTERM signal is sent to the haproxy process, it immediately quits and all established connections are closed"
 # "graceful stop is triggered when the SIGUSR1 signal is sent to the haproxy process"
 STOPSIGNAL SIGUSR1
-
+RUN update-ca-certificates
+RUN chmod 777 /etc/ssl/certs/ca-certificates.crt
 ADD haproxy/dataplaneapi.yml /etc/haproxy/dataplaneapi.yml
 ADD haproxy/docker-entrypoint.sh /usr/local/bin/
 RUN ln -s usr/local/bin/docker-entrypoint.sh / # backwards compat
-RUN apt update && apt install -y git lua5.3 liblua5.3-dev argon2 libargon2-dev luarocks
+RUN lua -v
+RUN apt update && apt install -y git lua5.4 liblua5.4-dev argon2 libargon2-dev luarocks
 RUN git config --global url."https://".insteadOf git://
 RUN luarocks install argon2
+RUN luarocks install --lua-version 5.4 argon2
+RUN luarocks install --lua-version 5.4 argon2 ARGON2_DIR=/usr ARGON2_LIBDIR=/usr/lib/x86_64-linux-gnu
+
+
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # no USER for backwards compatibility (to try to avoid breaking existing users)

@@ -49,7 +49,7 @@ _M.body = string.format([[
 			%%s
 		</noscript>
 		<div class="powstatus"></div>
-		<canvas id="canvas" width="250" height="40"></canvas>
+		<!-- <canvas id="canvas" width="250" height="40"></canvas> -->
 		<footer>
 			<p>Node: <code>%%s</code></p>
 			<p>%%s</p>
