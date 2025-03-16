@@ -3,7 +3,7 @@ package.path = package.path .. "./?.lua;/etc/haproxy/scripts/?.lua;/etc/haproxy/
 local pow_difficulty = tonumber(os.getenv("POW_DIFFICULTY") or 18)
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local utils = require("utils")
-local server_cn_split_regex = "([^;]+);(%u%u)$"
+local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local map_space_split_rexex = "([^%s]+)%s+([^%s]+)"
 
 -- setup initial server backends based on hosts.map
@@ -27,7 +27,7 @@ function setup_servers()
 	while line do
 		local domain, backend_data = line:match(map_space_split_rexex)
 		local backend_host, continent_code = backend_data:match(server_cn_split_regex)
-		local new_map_value = server_prefix .. counter .. ';' .. continent_code
+		local new_map_value = server_prefix .. counter .. '|' .. continent_code
 		local existing_map_value = backends_map:lookup(domain)
 		if existing_map_value ~= nil then
 			local current_backends = utils.split(existing_map_value, ",")

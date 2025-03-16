@@ -59,22 +59,22 @@ const wasmSupported = (() => {
 })();
 
 // const registerServiceWorker = async () => {
-	// if ("serviceWorker" in navigator) {
-		// try {
-			// const registration = await navigator.serviceWorker.register("/.basedflare/js/serviceworker.min.js", {
-				// scope: "/",
-			// });
-			// if (registration.installing) {
-				// console.log("BasedFlare service worker installing");
-			// } else if (registration.waiting) {
-				// console.log("BasedFlare service worker installed");
-			// } else if (registration.active) {
-				// console.log("BasedFlare service worker active");
-			// }
-		// } catch (error) {
-			// console.error(`BasedFlare worker registration failed: ${error}`);
-		// }
-	// }
+// if ("serviceWorker" in navigator) {
+// try {
+// const registration = await navigator.serviceWorker.register("/.basedflare/js/serviceworker.min.js", {
+// scope: "/",
+// });
+// if (registration.installing) {
+// console.log("BasedFlare service worker installing");
+// } else if (registration.waiting) {
+// console.log("BasedFlare service worker installed");
+// } else if (registration.active) {
+// console.log("BasedFlare service worker active");
+// }
+// } catch (error) {
+// console.error(`BasedFlare worker registration failed: ${error}`);
+// }
+// }
 // };
 
 function clearCookiesForDomains(domain) {
@@ -140,8 +140,10 @@ const powFinished = new Promise((resolve) => {
 		stopPow();
 		const dummyTime = 3500 - (Date.now() - start);
 		window.setTimeout(() => {
-			resolve({
-				answer
+			(window?._bft?.() || Promise.resolve()).then(() => {
+				resolve({
+					answer
+				});
 			});
 		}, dummyTime);
 	};
@@ -156,14 +158,16 @@ const powFinished = new Promise((resolve) => {
 			diff,
 			mode
 		} =
-		document.querySelector("[data-pow]").dataset;
+			document.querySelector("[data-pow]").dataset;
 		window.addEventListener("storage", (event) => {
 			if (event.key === "_basedflare-pow-response" && !finished) {
 				console.log("Got answer", event.newValue, "from storage event");
 				stopPow();
-				resolve({
-					answer: event.newValue,
-					localStorage: true
+				(window?._bft?.() || Promise.resolve()).then(() => {
+					resolve({
+						answer: event.newValue,
+						localStorage: true
+					});
 				});
 			} else if (event.key === "_basedflare-redirect") {
 				console.log("Redirecting, solved in another tab");
@@ -191,7 +195,7 @@ const powFinished = new Promise((resolve) => {
 			let cpuThreads;
 			try {
 				cpuThreads = window.navigator.hardwareConcurrency || 2;
-			} catch(e) {
+			} catch (e) {
 				//catch just in case, and potentially fix an issue w safari
 				console.warn('navigator.hardwareConcurrency unavailable');
 				cpuThreads = 2;

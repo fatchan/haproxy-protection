@@ -2,7 +2,7 @@ package.path = package.path .. "./?.lua;/etc/haproxy/scripts/?.lua;/etc/haproxy/
 
 local bot_check = require("bot-check")
 local utils = require("utils")
-local server_cn_split_regex = "([^;]+);(%u%u)$"
+local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 
 function get_server_names(txn)

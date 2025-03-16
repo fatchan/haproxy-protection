@@ -16,7 +16,7 @@ local templates = require("templates")
 local locales_path = "/etc/haproxy/locales/"
 local locales_table = {}
 local locales_strings = {}
-for file_name in io.popen('ls "'..locales_path..'"*.json'):lines() do
+for file_name in io.popen('ls "' .. locales_path .. '"*.json'):lines() do
 	local file_name_with_path = utils.split(file_name, "/")
 	local file_name_without_ext = utils.split(file_name_with_path[#file_name_with_path], ".")[1]
 	local file = io.open(file_name, "r")
@@ -73,7 +73,7 @@ end
 -- kill a tor circuit
 function _M.kill_tor_circuit(txn)
 	local ip = txn.sf:src()
-	if ip:sub(1,19) ~= "fc00:dead:beef:4dad" then
+	if ip:sub(1, 19) ~= "fc00:dead:beef:4dad" then
 		return -- not a tor circuit id/ip. we shouldn't get here, but just in case.
 	end
 	-- split the IP, take the last 2 sections
@@ -83,8 +83,8 @@ function _M.kill_tor_circuit(txn)
 	aa_bb = string.rep("0", 4 - #aa_bb) .. aa_bb
 	cc_dd = string.rep("0", 4 - #cc_dd) .. cc_dd
 	-- convert the last 2 sections to a number from hex, which makes the circuit ID
-	local circuit_identifier = tonumber(aa_bb..cc_dd, 16)
-	print('Closing Tor circuit ID: '..circuit_identifier..', "IP": '..ip)
+	local circuit_identifier = tonumber(aa_bb .. cc_dd, 16)
+	print('Closing Tor circuit ID: ' .. circuit_identifier .. ', "IP": ' .. ip)
 	utils.send_tor_control_port(circuit_identifier)
 end
 
@@ -114,7 +114,6 @@ function _M.get_ddos_config(context, is_applet)
 end
 
 function _M.view(applet)
-
 	-- host header
 	local host = applet.headers['host'][0]
 
@@ -139,7 +138,6 @@ function _M.view(applet)
 
 	-- if request is GET, serve the challenge page
 	if applet.method == "GET" then
-
 		-- get the user_key#challenge#sig
 		local user_key = sha.bin_to_hex(randbytes(16))
 		local challenge_hash, expiry = utils.generate_challenge(applet, pow_cookie_secret, user_key, ddos_config, true)
@@ -155,7 +153,7 @@ function _M.view(applet)
 		local captcha_enabled = false
 		local path = url.getpath(applet.qs); --because on /.basedflare/bot-check?/whatever, .qs (query string) holds the old path
 
-		local ddos_map_lookup = ddos_map:lookup(host..path) or ddos_map:lookup(host)
+		local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
 			if ddos_map_json.m == 2 then
@@ -166,8 +164,11 @@ function _M.view(applet)
 		-- return simple json if they send accept: application/json header
 		local accept_header = applet.headers['accept']
 		if accept_header ~= nil and accept_header[0] == 'application/json' then
-			local local_pow_combined = string.format('%s#%d#%s#%s', ddos_config["pt"], math.ceil(ddos_config["pd"]/8), argon_time, argon_kb)
-			response_body = "{\"ch\":\""..combined_challenge.."\",\"ca\":"..(captcha_enabled and "true" or "false")..",\"pow\":\""..local_pow_combined.."\"}"
+			local local_pow_combined = string.format('%s#%d#%s#%s', ddos_config["pt"], math.ceil(ddos_config["pd"] / 8),
+				argon_time, argon_kb)
+			response_body = "{\"ch\":\"" ..
+				combined_challenge ..
+				"\",\"ca\":" .. (captcha_enabled and "true" or "false") .. ",\"pow\":\"" .. local_pow_combined .. "\"}"
 			applet:set_status(403)
 			applet:add_header("content-type", "application/json; charset=utf-8")
 			applet:add_header("content-length", string.len(response_body))
@@ -192,7 +193,8 @@ function _M.view(applet)
 				local noscript_prompt
 				if ddos_config["pt"] == "argon2" then
 					noscript_extra = templates.noscript_extra_argon2
-					noscript_prompt = ll["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
+					noscript_prompt = ll
+						["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
 				else
 					noscript_extra = templates.noscript_extra_sha256
 					noscript_prompt = ll["Run this in a linux terminal (requires <code>perl</code>):"]
@@ -205,13 +207,19 @@ function _M.view(applet)
 					challenge_hash,
 					expiry,
 					signature,
-					math.ceil(ddos_config["pd"]/8),
+					math.ceil(ddos_config["pd"] / 8),
 					argon_time,
 					argon_kb,
 					ll["Paste the script output into the box and submit:"]
 				)
 			end
 		end
+
+		-- 		local extra_challenge = [[
+		-- <script src="/.basedflare/js/bc.js"></script>
+		-- <script src="/.basedflare/js/bm.min.js"></script>
+		-- 		]]
+		local extra_challenge = ""
 
 		-- sub in the body sections
 		response_body = string.format(
@@ -220,6 +228,7 @@ function _M.view(applet)
 			ls,
 			ll["Hold on..."],
 			css_val,
+			extra_challenge,
 			combined_challenge,
 			ddos_config["pd"],
 			argon_time,
@@ -235,9 +244,8 @@ function _M.view(applet)
 		)
 		response_status_code = 403
 
-	-- if request is POST, check the answer to the pow/cookie
+		-- if request is POST, check the answer to the pow/cookie
 	elseif applet.method == "POST" then
-
 		-- if they fail, set a var for use in ACLs later
 		local valid_submission = false
 		local number_expiry = nil
@@ -255,7 +263,6 @@ function _M.view(applet)
 		local user_pow_response = parsed_body["pow_response"]
 		local matched_expiry = 0 -- ensure captcha cookie expiry matches POW cookie
 		if user_pow_response then
-
 			-- split the response up (makes the nojs submission easier because it can be a single field)
 			local split_response = utils.split(user_pow_response, "#")
 
@@ -269,21 +276,21 @@ function _M.view(applet)
 				-- expiry check
 				number_expiry = tonumber(given_expiry, 10)
 				if number_expiry ~= nil and number_expiry > core.now()['sec'] then
-
 					-- regenerate the challenge and compare it
-					local generated_challenge_hash = utils.generate_challenge(applet, pow_cookie_secret, given_user_key, ddos_config, true)
+					local generated_challenge_hash = utils.generate_challenge(applet, pow_cookie_secret, given_user_key,
+						ddos_config, true)
 
 					if given_challenge_hash == generated_challenge_hash then
-
 						-- regenerate the signature and compare it
-						local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret, given_user_key .. given_challenge_hash .. given_expiry)
+						local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret,
+							given_user_key .. given_challenge_hash .. given_expiry)
 
 						if given_signature == generated_signature then
-
 							-- do the work with their given answer
 							local hex_hash_output = ""
 							if ddos_config["pt"] == "argon2" then
-								local encoded_argon_hash = argon2.hash_encoded(given_challenge_hash .. given_answer, given_user_key)
+								local encoded_argon_hash = argon2.hash_encoded(given_challenge_hash .. given_answer,
+									given_user_key)
 								local trimmed_argon_hash = utils.split(encoded_argon_hash, '$')[6]:sub(0, 43) -- https://github.com/thibaultcha/lua-argon2/issues/37
 								hex_hash_output = sha.bin_to_hex(sha.base64_to_bin(trimmed_argon_hash));
 							else
@@ -291,15 +298,18 @@ function _M.view(applet)
 							end
 
 							if utils.checkdiff(hex_hash_output, ddos_config["pd"]) then
-
 								-- the answer was good, give them a cookie
-								local signature = sha.hmac(sha.sha3_256, hmac_cookie_secret, given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
-								local combined_cookie = given_user_key .. "#" .. given_challenge_hash .. "#" .. given_expiry .. "#" .. given_answer .. "#" .. signature
+								local signature = sha.hmac(sha.sha3_256, hmac_cookie_secret,
+									given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
+								local combined_cookie = given_user_key ..
+									"#" ..
+									given_challenge_hash ..
+									"#" .. given_expiry .. "#" .. given_answer .. "#" .. signature
 								local expiry_date_p = _M.secondsToDate(number_expiry)
 								applet:add_header(
 									"set-cookie",
 									string.format(
-										--"_basedflare_pow=%s; Expires=%s; Path=/; Domain=.%s; SameSite=Lax; HttpOnly;%s",
+									--"_basedflare_pow=%s; Expires=%s; Path=/; Domain=.%s; SameSite=Lax; HttpOnly;%s",
 										"_basedflare_pow=%s; Expires=%s; Path=/; Domain=%s; SameSite=Lax; %s",
 										combined_cookie,
 										expiry_date_p,
@@ -309,7 +319,6 @@ function _M.view(applet)
 								)
 								valid_submission = true
 								matched_expiry = number_expiry
-
 							end
 						end
 					end
@@ -321,7 +330,6 @@ function _M.view(applet)
 		local user_captcha_response = parsed_body["h-captcha-response"] or parsed_body["g-recaptcha-response"]
 
 		if valid_submission and user_captcha_response then -- only check captcha if POW is already correct
-
 			-- format the url for verifying the captcha response
 			local captcha_url = string.format(
 				"https://%s%s",
@@ -331,19 +339,19 @@ function _M.view(applet)
 
 			-- construct the captcha body to send to the captcha url
 			local captcha_body = url.buildQuery({
-				secret=captcha_secret,
-				response=user_captcha_response
+				secret = captcha_secret,
+				response = user_captcha_response
 			})
 
 			-- instantiate an http client and make the request
 			local httpclient = core.httpclient()
-			local res = httpclient:post{
-				url=captcha_url,
-				body=captcha_body,
-				headers={
-					[ "host" ] = { captcha_provider_domain },
-					[ "content-type" ] = { "application/x-www-form-urlencoded" },
-					[ "user-agent" ] = { "haproxy-protection (haproxy-protection/0.1; +https://gitgud.io/fatchan/haproxy-protection)" }
+			local res = httpclient:post {
+				url = captcha_url,
+				body = captcha_body,
+				headers = {
+					["host"] = { captcha_provider_domain },
+					["content-type"] = { "application/x-www-form-urlencoded" },
+					["user-agent"] = { "haproxy-protection (haproxy-protection/0.1; +https://gitgud.io/fatchan/haproxy-protection)" }
 				}
 			}
 
@@ -372,7 +380,6 @@ function _M.view(applet)
 				)
 				valid_submission = valid_submission and true
 			end
-
 		end
 
 		if not valid_submission then
@@ -384,7 +391,7 @@ function _M.view(applet)
 		response_status_code = 302
 		applet:add_header("location", applet.qs)
 
-	-- else if its another http method, just 403 them
+		-- else if its another http method, just 403 them
 	else
 		response_status_code = 403
 	end
@@ -395,7 +402,6 @@ function _M.view(applet)
 	applet:add_header("content-length", string.len(response_body))
 	applet:start_response()
 	applet:send(response_body)
-
 end
 
 -- set a variable if ip or subnet in blocked/whitelist map and list of usernames matches the one for the current domain
@@ -468,7 +474,7 @@ end
 function _M.decide_checks_necessary(txn)
 	local host = txn.sf:hdr("Host")
 	local path = txn.sf:path();
-	local ddos_map_lookup = ddos_map:lookup(host..path) or ddos_map:lookup(host)
+	local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 	if ddos_map_lookup ~= nil then
 		local ddos_map_json = json.decode(ddos_map_lookup)
 		if ddos_map_json.m == 0
@@ -510,7 +516,8 @@ function _M.check_captcha_status(txn)
 		return
 	end
 	-- regenerate the signature and compare it
-	local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret, given_user_key .. given_user_hash .. given_expiry)
+	local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret,
+		given_user_key .. given_user_hash .. given_expiry)
 	if given_signature == generated_signature then
 		return txn:set_var("txn.captcha_passed", true)
 	end
@@ -543,7 +550,8 @@ function _M.check_pow_status(txn)
 		return
 	end
 	-- regenerate the signature and compare it
-	local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret, given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
+	local generated_signature = sha.hmac(sha.sha3_256, hmac_cookie_secret,
+		given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
 	if given_signature == generated_signature then
 		return txn:set_var("txn.pow_passed", true)
 	end
