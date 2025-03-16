@@ -27,6 +27,7 @@ services:
       - HAPROXY_CONTINENT=OC
       - HCAPTCHA_SITEKEY=20000000-ffff-ffff-ffff-000000000002
       - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
+      # - VERIFY_BACKEND_SSL=1
       #- RECAPTCHA_SECRET=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe
       #- RECAPTCHA_SITEKEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
       - CAPTCHA_COOKIE_SECRET=changeme
@@ -52,11 +53,28 @@ services:
       - ./nginx:/usr/share/nginx/html
 
   nginx2:
+    build:
+      context: ./nginx2
+      dockerfile: Dockerfile
     ports:
-      - 1082:80
+      - 1082:443
     image: "nginx:latest"
     volumes:
       - ./nginx2:/usr/share/nginx/html
+      - ./nginx2/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx2/nginx-certs:/etc/nginx/certs
+
+  nginx3:
+    build:
+      context: ./nginx2
+      dockerfile: Dockerfile
+    ports:
+      - 1083:443
+    image: "nginx:latest"
+    volumes:
+      - ./nginx3:/usr/share/nginx/html
+      - ./nginx3/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx3/nginx-certs:/etc/nginx/certs
 
   varnish:
     network_mode: host
