@@ -7,7 +7,8 @@ local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 
 function get_server_names(txn)
     local key = txn.sf:hdr("Host")
-    local user_cn = txn:get_var("txn.xcn") or "XX"
+    -- local user_cn = txn:get_var("txn.xcn") or "XX"
+    local user_cn = txn.sf:hdr("X-Continent-Code") or "XX"
     local value = backends_map:lookup(key or "")
     if value ~= nil then
         local filtered_backends = {}
