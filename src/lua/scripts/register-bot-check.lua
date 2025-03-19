@@ -4,11 +4,16 @@ local bot_check = require("bot-check")
 local utils = require("utils")
 local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
+local haproxy_cn = os.getenv("HAPROXY_CONTINENT") or "XX" -- shoult never be XX but avoid typing issue
 
-function get_server_names(txn)
+function Get_server_names(txn)
     local key = txn.sf:hdr("Host")
     -- local user_cn = txn:get_var("txn.xcn") or "XX"
     local user_cn = txn.sf:hdr("X-Continent-Code") or "XX"
+    if user_cn ~= haproxy_cn then
+        -- dont sent to a further away backend for non-regional servers, until asvc kicks in
+        user_cn = haproxy_cn
+    end
     local value = backends_map:lookup(key or "")
     if value ~= nil then
         local filtered_backends = {}
@@ -16,10 +21,10 @@ function get_server_names(txn)
         local vals = utils.split(value, ",")
         -- Single pass to filter and collect backends
         for _, backend in ipairs(vals) do
-            local backend_server_name, server_cn = backend:match(server_cn_split_regex)
+            local backend_server_name, backend_cn = backend:match(server_cn_split_regex)
             if backend_server_name then
                 table.insert(all_backends, backend_server_name)
-                if server_cn == user_cn or server_cn == "XX" then
+                if backend_cn == user_cn then
                     table.insert(filtered_backends, backend_server_name)
                 end
             end
@@ -37,7 +42,7 @@ function get_server_names(txn)
     return ""
 end
 
-core.register_fetches("get_server_names", get_server_names)
+core.register_fetches("get_server_names", Get_server_names)
 core.register_service("bot-check", "http", bot_check.view)
 core.register_action("captcha-check", { 'http-req', }, bot_check.check_captcha_status)
 core.register_action("pow-check", { 'http-req', }, bot_check.check_pow_status)
