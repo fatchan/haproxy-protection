@@ -4,16 +4,11 @@ local bot_check = require("bot-check")
 local utils = require("utils")
 local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
-local haproxy_cn = os.getenv("HAPROXY_CONTINENT") or "XX" -- shoult never be XX but avoid typing issue
+local haproxy_cn = os.getenv("HAPROXY_CONTINENT") or "XX" -- should never be XX but avoid typing issue
 
 function Get_server_names(txn)
     local key = txn.sf:hdr("Host")
-    -- local user_cn = txn:get_var("txn.xcn") or "XX"
-    local user_cn = txn.sf:hdr("X-Continent-Code") or "XX"
-    if user_cn ~= haproxy_cn then
-        -- dont sent to a further away backend for non-regional servers, until asvc kicks in
-        user_cn = haproxy_cn
-    end
+    local target_backend_cn = haproxy_cn
     local value = backends_map:lookup(key or "")
     if value ~= nil then
         local filtered_backends = {}
@@ -22,9 +17,12 @@ function Get_server_names(txn)
         -- Single pass to filter and collect backends
         for _, backend in ipairs(vals) do
             local backend_server_name, backend_cn = backend:match(server_cn_split_regex)
-            if backend_server_name then
+            local server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
+            -- print('backend_server_name: ' .. backend_server_name)
+            -- print('server_up: ' .. server_up)
+            if backend_server_name and server_up == 1 then
                 table.insert(all_backends, backend_server_name)
-                if backend_cn == user_cn then
+                if backend_cn == target_backend_cn then
                     table.insert(filtered_backends, backend_server_name)
                 end
             end
