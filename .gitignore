@@ -3,5 +3,5 @@ haproxy/*.pem
 haproxy/*.crt
 haproxy/dataplaneapi
 src/lua/scripts/tfp.lua
-#ignore self-signed cert
+haproxy/map/lfp.map
 certs/*
