@@ -18,7 +18,7 @@ RUN set -eux; \
 		--uid 99 \
 		haproxy
 
-ENV HAPROXY_URL http://www.haproxy.org/download/3.0/src/snapshot/haproxy-ss-LATEST.tar.gz
+ENV HAPROXY_URL http://www.haproxy.org/download/3.1/src/snapshot/haproxy-ss-LATEST.tar.gz
 ENV DATAPLANEAPI_URL https://github.com/haproxytech/dataplaneapi/releases/download/v2.7.5/dataplaneapi_2.7.5_Linux_x86_64.tar.gz
 
 # see https://sources.debian.net/src/haproxy/jessie/debian/rules/ for some helpful navigation of the possible "make" arguments

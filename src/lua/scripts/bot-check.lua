@@ -52,6 +52,7 @@ local pow_cookie_secret = os.getenv("POW_COOKIE_SECRET")
 local hmac_cookie_secret = os.getenv("HMAC_COOKIE_SECRET")
 local ray_id = os.getenv("RAY_ID")
 -- load captcha map and set hcaptcha/recaptch based off env vars
+local bfp_map = Map.new("/etc/haproxy/map/bfp.map", Map._str);
 local ddos_map = Map.new("/etc/haproxy/map/ddos.map", Map._str);
 local captcha_provider_domain = ""
 local captcha_siteverify_path = ""
@@ -156,7 +157,9 @@ function _M.view(applet)
 		local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
-			if ddos_map_json.m == 2 then
+			local fp = applet:get_var("txn.fp_custom")
+			local bfp_map_lookup = bfp_map:lookup(fp)
+			if ddos_map_json.m == 2 or bfp_map_lookup ~= nil then
 				captcha_enabled = true
 			end
 		end
@@ -476,6 +479,13 @@ function _M.decide_checks_necessary(txn)
 	local path = txn.sf:path();
 	local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 	if ddos_map_lookup ~= nil then
+		local fp = txn:get_var("txn.fp_custom")
+		local bfp_map_lookup = bfp_map:lookup(fp)
+		if bfp_map_lookup ~= nil then
+			txn:set_var("txn.validate_pow", true)
+			txn:set_var("txn.validate_captcha", true)
+			return
+		end
 		local ddos_map_json = json.decode(ddos_map_lookup)
 		if ddos_map_json.m == 0
 			or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
@@ -486,6 +496,7 @@ function _M.decide_checks_necessary(txn)
 				txn:set_var("txn.validate_captcha", true)
 			end
 		end
+
 	end
 	-- no entry in the map
 end

@@ -2,3 +2,6 @@ tor/hidden_service/
 haproxy/*.pem
 haproxy/*.crt
 haproxy/dataplaneapi
+src/lua/scripts/tfp.lua
+#ignore self-signed cert
+certs/*

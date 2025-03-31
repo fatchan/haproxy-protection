@@ -17,6 +17,7 @@ services:
       - ./src/lua/libs/:/etc/haproxy/libs/
       - ./src/js/:/etc/haproxy/js/
       - ./src/locales/:/etc/haproxy/locales/
+      - ./certs:/etc/haproxy/certs
       - ../../Documents/dataplaneapi/build/dataplaneapi:/usr/local/bin/dataplaneapi
     environment:
       # These are the hcaptcha and recaptcha test keys, not leaking any dont worry :^)
