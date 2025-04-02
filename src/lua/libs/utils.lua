@@ -23,10 +23,12 @@ function _M.generate_challenge(context, salt, user_key, ddos_config, is_applet)
 		ip = context.sf:src()
 	end
 
+	local custom_value = context:get_var("txn.fp_custom") or ""
+
 	-- user agent to counter very dumb spammers
 	local user_agent = _M.get_header_from_context(context, "user-agent", is_applet)
 
-	local challenge_hash = sha.sha3_256(salt .. ip .. user_key .. user_agent)
+	local challenge_hash = sha.sha3_256(salt .. ip .. user_key .. custom_value .. user_agent)
 
 	local expiry = core.now()["sec"] + ddos_config["cex"]
 
