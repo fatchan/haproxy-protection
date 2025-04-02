@@ -1,6 +1,7 @@
 ---
 config_version: 2
 dataplaneapi:
+#  disable_inotify: true
   host: 0.0.0.0
   port: 2001
   resources:
