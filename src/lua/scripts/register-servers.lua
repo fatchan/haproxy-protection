@@ -43,11 +43,11 @@ function setup_servers()
 		if verify_backend_ssl ~= nil then
 			if verify_none ~= nil then -- for development use only
 				tcp:send(string.format(
-					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host) check observe layer4;",
+					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host) check observe layer4 inter 120s;",
 					server_name, backend_host))
 			else
 				tcp:send(string.format(
-					"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host) check observe layer4;",
+					"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host) check observe layer4 inter 120s;",
 					server_name, backend_host))
 			end
 		else
