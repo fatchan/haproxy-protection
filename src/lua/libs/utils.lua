@@ -23,7 +23,9 @@ function _M.generate_challenge(context, salt, user_key, ddos_config, is_applet)
 		ip = context.sf:src()
 	end
 
-	local custom_value = context:get_var("txn.fp_custom") or ""
+	-- if ddos_config["fp"] == true then
+		local custom_value = context:get_var("txn.fp_custom2") or ""
+	-- end
 
 	-- user agent to counter very dumb spammers
 	local user_agent = _M.get_header_from_context(context, "user-agent", is_applet)
