@@ -466,7 +466,6 @@ function _M.set_ip_var(txn, map_name, set_variable, lookup_var)
 	local split_names = utils.split(names_list, ":")
 	for _, name in ipairs(split_names) do
 		if name == current_name or (map_name == "whitelist" and name == "admin") then
-			_M.set_lang_json(txn)
 			txn:set_var(set_variable, true)
 			return
 		end
