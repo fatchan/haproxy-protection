@@ -17,7 +17,7 @@ footer{font-size:x-small;margin-top:auto;padding:10px;text-align:center;border-t
 	</head>
 	<body>
 		<h3 class="pt">
-			%[var(txn.lang_json),json_query($.You look like a robot\.)]
+			%[var(txn.lang_json),json_query($.Your IP/Network/Country is blocked\.)]
 		</h3>
 		<footer>
 			<p>Node: <code>%[env(RAY_ID)]</code></p>

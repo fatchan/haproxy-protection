@@ -21,7 +21,7 @@
 "Paste the script output into the box and submit:": "Paste the script output into the box and submit:",
 "submit": "submit",
 "Bad Request.": "Bad Request.",
-"You look like a robot.": "You look like a robot.",
+"Your IP/Network/Country is blocked.": "Your IP/Network/Country is blocked.",
 "Request Time-out.": "Request Time-out.",
 "Slow down, you look like a robot.": "Slow down, you look like a robot.",
 "Internal Server Error, please try again later.": "Internal Server Error, please try again later.",
