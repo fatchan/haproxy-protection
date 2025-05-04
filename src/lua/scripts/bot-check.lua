@@ -114,6 +114,55 @@ function _M.get_ddos_config(context, is_applet)
 	return ddos_config
 end
 
+local ProtectionMode = {
+    NONE = 0,
+    POW_SUSPICIOUS_ONLY = 1,
+    CAPTCHA_SUSPICIOUS_ONLY = 2,
+    POW_ALL = 3,
+    POW_ALL_CAPTCHA_SUSPICIOUS_ONLY = 4,
+    CAPTCHA_ALL = 5
+}
+
+local function is_suspicious(fp)
+	-- TODO: add the bpm stuff here next
+    return bfp_map:lookup(fp) ~= nil
+end
+
+function _M.decide_checks_necessary(txn)
+    local host = txn.sf:hdr("Host")
+    local path = txn.sf:path()
+    local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
+
+    if ddos_map_lookup ~= nil then
+        local ddos_map_json = json.decode(ddos_map_lookup)
+
+        if ddos_map_json.m == ProtectionMode.NONE
+            or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
+            return
+        end
+
+        local fp = txn:get_var("txn.fp_custom")
+		local fp_suspicious = is_suspicious(fp)
+		local mode = ddos_map_json.m
+
+        if mode == ProtectionMode.POW_SUSPICIOUS_ONLY and fp_suspicious then
+	        txn:set_var("txn.validate_pow", true)
+	    elseif mode == ProtectionMode.CAPTCHA_SUSPICIOUS_ONLY and fp_suspicious then
+	        txn:set_var("txn.validate_pow", true)
+	        txn:set_var("txn.validate_captcha", true)
+		elseif mode == ProtectionMode.POW_ALL then
+	        txn:set_var("txn.validate_pow", true)
+	    elseif mode == ProtectionMode.POW_ALL_CAPTCHA_SUSPICIOUS_ONLY then
+	        txn:set_var("txn.validate_pow", true)
+	        txn:set_var("txn.validate_captcha", fp_suspicious)
+	    elseif mode == ProtectionMode.CAPTCHA_ALL then
+	        txn:set_var("txn.validate_pow", true)
+	        txn:set_var("txn.validate_captcha", true)
+	    end
+
+    end
+end
+
 function _M.view(applet)
 	-- host header
 	local host = applet.headers['host'][0]
@@ -157,11 +206,12 @@ function _M.view(applet)
 		local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
-			local fp = applet:get_var("txn.fp_custom")
-			local bfp_map_lookup = bfp_map:lookup(fp)
-			if ddos_map_json.m == 2 or bfp_map_lookup ~= nil then
-				captcha_enabled = true
-			end
+			local fp_suspicious = is_suspicious(applet:get_var("txn.fp_custom"))
+			local mode = ddos_map_json.m
+			if (mode == ProtectionMode.CAPTCHA_ALL
+				or ((mode == ProtectionMode.CAPTCHA_SUSPICIOUS_ONLY or mode == ProtectionMode.POW_ALL_CAPTCHA_SUSPICIOUS_ONLY) and fp_suspicious)) then
+	            captcha_enabled = true
+	        end
 		end
 
 		-- return simple json if they send accept: application/json header
@@ -470,34 +520,6 @@ function _M.set_ip_var(txn, map_name, set_variable, lookup_var)
 			return
 		end
 	end
-end
-
--- check if captcha is enabled, path+domain priority, then just domain, and 0 otherwise
-function _M.decide_checks_necessary(txn)
-	local host = txn.sf:hdr("Host")
-	local path = txn.sf:path();
-	local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
-	if ddos_map_lookup ~= nil then
-		local fp = txn:get_var("txn.fp_custom")
-		local bfp_map_lookup = bfp_map:lookup(fp)
-		if bfp_map_lookup ~= nil then
-			txn:set_var("txn.validate_pow", true)
-			txn:set_var("txn.validate_captcha", true)
-			return
-		end
-		local ddos_map_json = json.decode(ddos_map_lookup)
-		if ddos_map_json.m == 0
-			or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
-			return
-		else
-			txn:set_var("txn.validate_pow", true)
-			if ddos_map_json.m == 2 then
-				txn:set_var("txn.validate_captcha", true)
-			end
-		end
-
-	end
-	-- no entry in the map
 end
 
 -- check if captcha cookie is valid, separate secret from POW
