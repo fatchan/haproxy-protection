@@ -135,15 +135,15 @@ function _M.decide_checks_necessary(txn)
 
     if ddos_map_lookup ~= nil then
         local ddos_map_json = json.decode(ddos_map_lookup)
+        local mode = ddos_map_json.m
 
-        if ddos_map_json.m == ProtectionMode.NONE
+        if mode == ProtectionMode.NONE
             or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
             return
         end
 
         local fp = txn:get_var("txn.fp_custom")
-		local fp_suspicious = is_suspicious(fp)
-		local mode = ddos_map_json.m
+        local fp_suspicious = is_suspicious(fp)
 
         if mode == ProtectionMode.POW_SUSPICIOUS_ONLY and fp_suspicious then
 	        txn:set_var("txn.validate_pow", true)
