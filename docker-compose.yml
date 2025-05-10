@@ -3,13 +3,12 @@ services:
   haproxy:
     network_mode: host
     build:
-      # no_cache: true
       context: ./
       dockerfile: haproxy/Dockerfile
     volumes:
       - shared-socket:/shared-sockets
       - ./haproxy/haproxy.cfg:/etc/haproxy/haproxy.cfg
-      #- ./haproxy/dataplaneapi.yml:/etc/haproxy/dataplaneapi.yml
+      - ./haproxy/dataplaneapi.yml:/etc/haproxy/dataplaneapi.yml
       - ./haproxy/errors/:/etc/haproxy/errors/
       - ./haproxy/map/:/etc/haproxy/map/
       - ./haproxy/template/:/etc/haproxy/template/
@@ -20,16 +19,14 @@ services:
       - ./certs:/etc/haproxy/certs
       - ../../Documents/dataplaneapi/build/dataplaneapi:/usr/local/bin/dataplaneapi
     environment:
-      # These are the hcaptcha and recaptcha test keys, not leaking any dont worry :^)
+      # test keys
+      - HCAPTCHA_SITEKEY=20000000-ffff-ffff-ffff-000000000002
+      - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
       - HAPROXY_MAXCONN=5000
       - HAPROXY_CACHE_MB=500
       - HAPROXY_CONTINENT=OC
-      - HCAPTCHA_SITEKEY=20000000-ffff-ffff-ffff-000000000002
-      - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
       - VERIFY_BACKEND_SSL_VERIFYNONE=1
       - VERIFY_BACKEND_SSL=1
-      #- RECAPTCHA_SECRET=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe
-      #- RECAPTCHA_SITEKEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
       - CAPTCHA_COOKIE_SECRET=changeme
       - POW_COOKIE_SECRET=changeme
       - HMAC_COOKIE_SECRET=changeme
@@ -44,6 +41,7 @@ services:
       - POW_TYPE=argon2
       - TOR_CONTROL_PORT_PASSWORD=changeme
       - USE_INTER_FONT=1
+      # - USE_POSTHOG=1
 
   nginx:
     ports:
@@ -87,13 +85,6 @@ services:
       - ./varnish/default.vcl:/etc/varnish/default.vcl
     command: varnishd -F -a /shared-sockets/haproxy-to-varnish-cache.sock -f /etc/varnish/default.vcl -s malloc,$VARNISH_SIZE
     user: root
-
-#   tor:
-#     build:
-#       context: ./
-#       dockerfile: tor/Dockerfile
-#     volumes:
-#       - ./tor/hidden_service:/var/lib/tor/hidden_service  # persists hs keys
 
 volumes:
   shared-socket:
