@@ -1,6 +1,7 @@
 local _M = {}
 local sha = require("sha")
 local tor_control_port_password = os.getenv("TOR_CONTROL_PORT_PASSWORD")
+local verbose_log_map = Map.new("/etc/haproxy/map/verbose_log.map", Map._str)
 
 -- get header from different place depending on action vs view
 function _M.get_header_from_context(context, header_name, is_applet)
@@ -33,6 +34,10 @@ function _M.generate_challenge(context, salt, user_key, ddos_config, is_applet)
 	local challenge_hash = sha.sha3_256(salt .. ip .. user_key .. custom_value .. user_agent)
 
 	local expiry = core.now()["sec"] + ddos_config["cex"]
+
+	if verbose_log_map:lookup(ip) ~= nil then
+		print('verbose_log_map utils.generate_challenge: ' .. salt .. ' ' .. ip .. ' ' .. user_key .. ' ' .. custom_value .. ' "' .. user_agent .. '"')
+	end
 
 	return challenge_hash, expiry
 
