@@ -545,7 +545,7 @@ function _M.check_captcha_status(txn)
 	if verbose_log then
 		print('verbose_log_map bot-check.check_captcha_status: ' .. txn.sf:hdr("Cookie"))
 		print('verbose_log_map bot-check.check_captcha_status: ' .. tableToString(parsed_request_cookies))
-		print('verbose_log_map bot-check.check_captcha_status: ' .. received_captcha_cookie or "NO_CAPTCHA_COOKIE")
+		print('verbose_log_map bot-check.check_captcha_status: ' .. (received_captcha_cookie or "NO_CAPTCHA_COOKIE"))
 	end
 
 	-- split the cookie up
@@ -598,7 +598,7 @@ function _M.check_pow_status(txn)
 	if verbose_log then
 		print('verbose_log_map bot-check.check_pow_status: ' .. txn.sf:hdr("Cookie"))
 		print('verbose_log_map bot-check.check_pow_status: ' .. tableToString(parsed_request_cookies))
-		print('verbose_log_map bot-check.check_pow_status: ' .. received_pow_cookie or "NO_POW_COOKIE")
+		print('verbose_log_map bot-check.check_pow_status: ' .. (received_pow_cookie or "NO_POW_COOKIE"))
 	end
 
 	-- split the cookie up
