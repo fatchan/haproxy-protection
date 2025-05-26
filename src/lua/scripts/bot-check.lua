@@ -66,19 +66,6 @@ end
 
 local css_map = Map.new("/etc/haproxy/map/css.map", Map._str);
 
--- local verbose_log_map = Map.new("/etc/haproxy/map/verbose_log.map", Map._str)
-function tableToString(tbl)
-    local result = {}
-    for k, v in pairs(tbl) do
-        if type(v) == "table" then
-            table.insert(result, k .. "=" .. tableToString(v))
-        else
-            table.insert(result, k .. "=" .. tostring(v))
-        end
-    end
-    return "{" .. table.concat(result, ", ") .. "}"
-end
-
 function _M.secondsToDate(seconds)
 	local formattedDate = os.date("!%a, %d-%b-%y %H:%M:%S GMT", seconds)
 	return formattedDate
@@ -540,14 +527,6 @@ function _M.check_captcha_status(txn)
 	local parsed_request_cookies = cookie.get_cookie_table(txn.sf:hdr("Cookie"))
 	local received_captcha_cookie = parsed_request_cookies["_basedflare_captcha"] or ""
 
-	-- verbose logging for specific ip debugging
-	local verbose_log = txn.sf:path() == "/.basedflare/cgi/debug"
-	if verbose_log then
-		print('verbose_log bot-check.check_captcha_status: ' .. txn.sf:hdr("Cookie"))
-		print('verbose_log bot-check.check_captcha_status: ' .. tableToString(parsed_request_cookies))
-		print('verbose_log bot-check.check_captcha_status: ' .. (parsed_request_cookies["_basedflare_captcha"] or "NO_CAPTCHA_COOKIE"))
-	end
-
 	-- split the cookie up
 	local split_cookie = utils.split(received_captcha_cookie, "#")
 	if #split_cookie ~= 4 then
@@ -561,18 +540,12 @@ function _M.check_captcha_status(txn)
 	-- expiry check
 	local number_expiry = tonumber(given_expiry, 10)
 	if number_expiry == nil or number_expiry <= core.now()['sec'] then
-		if verbose_log then
-			print('verbose_log bot-check.check_captcha_status: invalid expiry')
-		end
 		return
 	end
 	-- regenerate the user hash and compare it
 	local ddos_config = _M.get_ddos_config(txn, false)
 	local generated_user_hash = utils.generate_challenge(txn, captcha_cookie_secret, given_user_key, ddos_config, false)
 	if generated_user_hash ~= given_user_hash then
-		if verbose_log then
-			print('verbose_log bot-check.check_captcha_status: mismatched challenge hash')
-		end
 		return
 	end
 	-- regenerate the signature and compare it
@@ -582,24 +555,12 @@ function _M.check_captcha_status(txn)
 		return txn:set_var("txn.captcha_passed", true)
 	end
 
-	if verbose_log then
-		print('verbose_log bot-check.check_captcha_status: mismatched signature')
-	end
-
 end
 
 -- check if pow cookie is valid
 function _M.check_pow_status(txn)
 	local parsed_request_cookies = cookie.get_cookie_table(txn.sf:hdr("Cookie"))
 	local received_pow_cookie = parsed_request_cookies["_basedflare_pow"] or ""
-
-	-- verbose logging for specific ip debugging
-	local verbose_log = txn.sf:path() == "/.basedflare/cgi/debug"
-	if verbose_log then
-		print('verbose_log bot-check.check_pow_status: ' .. txn.sf:hdr("Cookie"))
-		print('verbose_log bot-check.check_pow_status: ' .. tableToString(parsed_request_cookies))
-		print('verbose_log bot-check.check_pow_status: ' .. (parsed_request_cookies["_basedflare_pow"] or "NO_POW_COOKIE"))
-	end
 
 	-- split the cookie up
 	local split_cookie = utils.split(received_pow_cookie, "#")
@@ -615,18 +576,12 @@ function _M.check_pow_status(txn)
 	-- expiry check
 	local number_expiry = tonumber(given_expiry, 10)
 	if number_expiry == nil or number_expiry <= core.now()['sec'] then
-		if verbose_log then
-			print('verbose_log bot-check.check_pow_status: invalid expiry')
-		end
 		return
 	end
 	-- regenerate the challenge and compare it
 	local ddos_config = _M.get_ddos_config(txn, false)
 	local generated_challenge_hash = utils.generate_challenge(txn, pow_cookie_secret, given_user_key, ddos_config, false)
 	if given_challenge_hash ~= generated_challenge_hash then
-		if verbose_log then
-			print('verbose_log bot-check.check_pow_status: mismatched challenge hash')
-		end
 		return
 	end
 	-- regenerate the signature and compare it
@@ -634,10 +589,6 @@ function _M.check_pow_status(txn)
 		given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
 	if given_signature == generated_signature then
 		return txn:set_var("txn.pow_passed", true)
-	end
-
-	if verbose_log then
-		print('verbose_log bot-check.check_pow_status: mismatched signature')
 	end
 
 end
