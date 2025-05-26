@@ -1,6 +1,5 @@
 local _M = {}
 local sha = require("sha")
-local url = require("url")
 local tor_control_port_password = os.getenv("TOR_CONTROL_PORT_PASSWORD")
 
 -- get header from different place depending on action vs view
@@ -13,14 +12,6 @@ function _M.get_header_from_context(context, header_name, is_applet)
 		header_content = context.sf:req_fhdr(header_name) or ""
 	end
 	return header_content
-end
-
-function _M.get_url_from_context(context, is_applet)
-	if is_applet == true then
-		return url.getpath(context.qs)
-	else
-		return context.sf:path()
-	end
 end
 
 -- generate the challenge hash/user hash
