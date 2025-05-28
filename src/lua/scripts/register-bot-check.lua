@@ -3,13 +3,16 @@ package.path = package.path .. "./?.lua;/etc/haproxy/scripts/?.lua;/etc/haproxy/
 local bot_check = require("bot-check")
 local utils = require("utils")
 local server_cn_split_regex = "([^;]+)|(%u%u)$"
+local server_port_split_pattern = "([^:]+):(%d+)"
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local haproxy_cn = os.getenv("HAPROXY_CONTINENT") or "XX" -- should never be XX but avoid typing issue
 
-function Get_server_names(txn)
+
+function Get_server_ip(txn)
     local key = txn.sf:hdr("Host")
     local target_backend_cn = haproxy_cn
     local value = backends_map:lookup(key or "")
+    -- print("fc_dst_port: " .. txn:get_var("txn.cport"))
     if value ~= nil then
         local filtered_backends = {}
         local all_backends = {}
@@ -17,10 +20,48 @@ function Get_server_names(txn)
         -- Single pass to filter and collect backends
         for _, backend in ipairs(vals) do
             local backend_server_name, backend_cn = backend:match(server_cn_split_regex)
-            local server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
+            -- local server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
             -- print('backend_server_name: ' .. backend_server_name)
             -- print('server_up: ' .. server_up)
-            if backend_server_name and server_up == 1 then
+            if backend_server_name then -- and server_up == 1 then
+                table.insert(all_backends, backend_server_name)
+                if backend_cn == target_backend_cn then
+                    table.insert(filtered_backends, backend_server_name)
+                end
+            end
+        end
+        -- Randomly select from filtered backends if available
+        if #filtered_backends > 0 then
+            local s = filtered_backends[math.random(#filtered_backends)]
+            local s_ip, _ = core.proxies["servers"]["servers"][s]:get_addr():match(server_port_split_pattern)
+            return s_ip
+        elseif #all_backends > 0 then
+            -- If no filtered backends, randomly select from all backends
+            local s = all_backends[math.random(#all_backends)]
+            local s_ip, _ = core.proxies["servers"]["servers"][s]:get_addr():match(server_port_split_pattern)
+            return s_ip
+        end
+    end
+    return ""
+end
+
+
+function Get_server_names(txn)
+    local key = txn.sf:hdr("Host")
+    local target_backend_cn = haproxy_cn
+    local value = backends_map:lookup(key or "")
+    -- print("fc_dst_port: " .. txn:get_var("txn.cport"))
+    if value ~= nil then
+        local filtered_backends = {}
+        local all_backends = {}
+        local vals = utils.split(value, ",")
+        -- Single pass to filter and collect backends
+        for _, backend in ipairs(vals) do
+            local backend_server_name, backend_cn = backend:match(server_cn_split_regex)
+            -- local server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
+            -- print('backend_server_name: ' .. backend_server_name)
+            -- print('server_up: ' .. server_up)
+            if backend_server_name then -- and server_up == 1 then
                 table.insert(all_backends, backend_server_name)
                 if backend_cn == target_backend_cn then
                     table.insert(filtered_backends, backend_server_name)
@@ -41,6 +82,7 @@ function Get_server_names(txn)
 end
 
 core.register_fetches("get_server_names", Get_server_names)
+core.register_fetches("get_server_ip", Get_server_ip)
 core.register_service("bot-check", "http", bot_check.view)
 core.register_action("captcha-check", { 'http-req', }, bot_check.check_captcha_status)
 core.register_action("pow-check", { 'http-req', }, bot_check.check_pow_status)

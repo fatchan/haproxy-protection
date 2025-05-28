@@ -132,7 +132,7 @@ function _M.decide_checks_necessary(txn)
     local host = txn.sf:hdr("Host")
     local path = txn.sf:path()
     local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
-
+    -- print("fc_dst_port: " .. txn.sf:fc_dst_port())
     if ddos_map_lookup ~= nil then
         local ddos_map_json = json.decode(ddos_map_lookup)
         local mode = ddos_map_json.m
