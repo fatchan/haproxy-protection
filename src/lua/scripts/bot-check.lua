@@ -37,13 +37,6 @@ argon2.hash_len(32)
 argon2.variant(argon2.variants.argon2_id)
 argon2.t_cost(argon_time)
 argon2.m_cost(argon_kb)
-local ddos_config_map = Map.new("/etc/haproxy/map/ddos_config.map", Map._str)
-local ddos_default_config = {
-	["pt"] = os.getenv("POW_TYPE") or "argon2",
-	["pd"] = tonumber(os.getenv("POW_DIFFICULTY") or 18),
-	["cip"] = (os.getenv("CHALLENGE_INCLUDES_IP") ~= nil and true or false),
-	["cex"] = tonumber(os.getenv("CHALLENGE_EXPIRY")),
-}
 
 -- captcha variables
 local captcha_secret = os.getenv("HCAPTCHA_SECRET") or os.getenv("RECAPTCHA_SECRET")
@@ -51,9 +44,8 @@ local captcha_cookie_secret = os.getenv("CAPTCHA_COOKIE_SECRET")
 local pow_cookie_secret = os.getenv("POW_COOKIE_SECRET")
 local hmac_cookie_secret = os.getenv("HMAC_COOKIE_SECRET")
 local ray_id = os.getenv("RAY_ID")
+
 -- load captcha map and set hcaptcha/recaptch based off env vars
-local bfp_map = Map.new("/etc/haproxy/map/bfp.map", Map._str);
-local ddos_map = Map.new("/etc/haproxy/map/ddos.map", Map._str);
 local captcha_provider_domain = ""
 local captcha_siteverify_path = ""
 if os.getenv("HCAPTCHA_SITEKEY") then
@@ -62,13 +54,6 @@ if os.getenv("HCAPTCHA_SITEKEY") then
 else
 	captcha_provider_domain = "www.google.com"
 	captcha_siteverify_path = "/recaptcha/api/siteverify"
-end
-
-local css_map = Map.new("/etc/haproxy/map/css.map", Map._str);
-
-function _M.secondsToDate(seconds)
-	local formattedDate = os.date("!%a, %d-%b-%y %H:%M:%S GMT", seconds)
-	return formattedDate
 end
 
 -- kill a tor circuit
@@ -91,7 +76,7 @@ end
 
 -- read first language from accept-language in applet (note: does not consider q values)
 local default_lang = "en-US"
-function _M.get_first_language(context, is_applet)
+local function get_first_language(context, is_applet)
 	local accept_language = utils.get_header_from_context(context, "accept-language", is_applet)
 	if #accept_language > 0 and #accept_language < 100 then -- length limit preventing abuse
 		for lang in accept_language:gmatch("[^,%s]+") do
@@ -102,8 +87,19 @@ function _M.get_first_language(context, is_applet)
 	end
 end
 
--- get ddos config from map or take default
-function _M.get_ddos_config(context, is_applet)
+-- ddos and sus maps
+local bfp_map = Map.new("/etc/haproxy/map/bfp.map", Map._str);
+local vpn_map = Map.new("/etc/haproxy/map/vpn.map", Map._str);
+local dc_map = Map.new("/etc/haproxy/map/dc.map", Map._str);
+local ddos_map = Map.new("/etc/haproxy/map/ddos.map", Map._str);
+local ddos_config_map = Map.new("/etc/haproxy/map/ddos_config.map", Map._str)
+local ddos_default_config = {
+	["pt"] = os.getenv("POW_TYPE") or "argon2",
+	["pd"] = tonumber(os.getenv("POW_DIFFICULTY") or 18),
+	["cip"] = (os.getenv("CHALLENGE_INCLUDES_IP") ~= nil and true or false),
+	["cex"] = tonumber(os.getenv("CHALLENGE_EXPIRY")),
+}
+local function get_ddos_config(context, is_applet)
 	local host = utils.get_header_from_context(context, "host", is_applet)
 	local ddos_config = ddos_config_map:lookup(host)
 	if ddos_config ~= nil then
@@ -116,59 +112,96 @@ end
 
 local ProtectionMode = {
     NONE = 0,
-    POW_SUSPICIOUS_ONLY = 1,
-    CAPTCHA_SUSPICIOUS_ONLY = 2,
+    POW_SUS_ONLY = 1,
+    CAPTCHA_SUS_ONLY = 2,
     POW_ALL = 3,
-    POW_ALL_CAPTCHA_SUSPICIOUS_ONLY = 4,
+    POW_ALL_CAPTCHA_SUS_ONLY = 4,
     CAPTCHA_ALL = 5
 }
 
-local function is_suspicious(fp)
-	-- TODO: add the bpm stuff here next
-    return bfp_map:lookup(fp) ~= nil
+local function check_sus(fp, ip, asn, country_code)
+    local is_bfp = bfp_map:lookup(fp) ~= nil
+    local is_vpn = vpn_map:lookup(asn) ~= nil
+    local is_dc = dc_map:lookup(asn) ~= nil
+    local is_t1 = country_code == "T1"
+    return is_bfp, is_vpn, is_dc, is_t1
+end
+
+local function is_request_sus(level, fp, ip, asn, country_code)
+    local req_sus = false
+    local is_bfp, is_vpn, is_dc, is_t1 = check_sus(fp, ip, asn, country_code)
+	-- todo bitfield
+    if level == 1 and is_t1 then
+        req_sus = true
+    elseif level == 2 and (is_t1 or is_bfp) then
+        req_sus = true
+    elseif level == 3 and (is_t1 or is_vpn or is_bfp) then
+        req_sus = true
+    elseif level == 4 and (is_t1 or is_vpn or is_bfp or is_dc) then
+        req_sus = true
+    end
+    return req_sus
+end
+
+local function determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
+	local mode = ddos_map_json.m
+	local validate_pow = false
+	local validate_captcha = false
+	local req_sus = is_request_sus(ddos_map_json.l, fp, ip, asn, country_code)
+
+	if mode == ProtectionMode.NONE then
+		return false, false, req_sus
+	end
+
+	if mode == ProtectionMode.POW_SUS_ONLY and req_sus then
+		validate_pow = true
+	elseif mode == ProtectionMode.CAPTCHA_SUS_ONLY and req_sus then
+		validate_pow = true
+		validate_captcha = true
+	elseif mode == ProtectionMode.POW_ALL then
+		validate_pow = true
+	elseif mode == ProtectionMode.CAPTCHA_ALL then
+		validate_pow = true
+		validate_captcha = true
+	elseif mode == ProtectionMode.POW_ALL_CAPTCHA_SUS_ONLY and req_sus then
+		validate_pow = true
+		validate_captcha = req_sus
+	elseif mode == ProtectionMode.CAPTCHA_ALL then
+		validate_captcha = true
+		validate_pow = true
+	end
+
+	return validate_pow, validate_captcha, req_sus
+end
+
+local function secondsToDate(seconds)
+	local formattedDate = os.date("!%a, %d-%b-%y %H:%M:%S GMT", seconds)
+	return formattedDate
 end
 
 function _M.decide_checks_necessary(txn)
-    local host = txn.sf:hdr("Host")
-    local path = txn.sf:path()
-    local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
-    -- print("fc_dst_port: " .. txn.sf:fc_dst_port())
-    if ddos_map_lookup ~= nil then
-        local ddos_map_json = json.decode(ddos_map_lookup)
-        local mode = ddos_map_json.m
-
-        if mode == ProtectionMode.NONE
-            or (ddos_map_json.t == true and txn.sf:hdr("X-Country-Code") ~= "T1") then
-            return
-        end
-
-        local fp = txn:get_var("txn.fp_custom")
-        local fp_suspicious = is_suspicious(fp)
-
-        if mode == ProtectionMode.POW_SUSPICIOUS_ONLY and fp_suspicious then
-	        txn:set_var("txn.validate_pow", true)
-	    elseif mode == ProtectionMode.CAPTCHA_SUSPICIOUS_ONLY and fp_suspicious then
-	        txn:set_var("txn.validate_pow", true)
-	        txn:set_var("txn.validate_captcha", true)
-		elseif mode == ProtectionMode.POW_ALL then
-	        txn:set_var("txn.validate_pow", true)
-	    elseif mode == ProtectionMode.POW_ALL_CAPTCHA_SUSPICIOUS_ONLY then
-	        txn:set_var("txn.validate_pow", true)
-	        txn:set_var("txn.validate_captcha", fp_suspicious)
-	    elseif mode == ProtectionMode.CAPTCHA_ALL then
-	        txn:set_var("txn.validate_pow", true)
-	        txn:set_var("txn.validate_captcha", true)
-	    end
-
-    end
+	local host = txn.sf:hdr("Host")
+	local path = txn.sf:path()
+	local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
+	if ddos_map_lookup ~= nil then
+		local ddos_map_json = json.decode(ddos_map_lookup)
+		local ip = txn.sf:src()
+		local fp = txn:get_var("txn.fp_custom")
+		local asn = txn:get_var("req.asn")
+		local country_code = txn.sf:hdr("X-Country-Code")
+		local validate_pow, validate_captcha, _ = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
+		txn:set_var("txn.validate_pow", validate_pow)
+		txn:set_var("txn.validate_captcha", validate_captcha)
+	end
 end
 
+local css_map = Map.new("/etc/haproxy/map/css.map", Map._str);
 function _M.view(applet)
 	-- host header
 	local host = applet.headers['host'][0]
 
 	-- set the ll and ls language var based off header or default to en-US
-	local lang = _M.get_first_language(applet, true)
+	local lang = get_first_language(applet, true)
 	local ll = locales_table[lang]
 	if ll == nil then
 		ll = locales_table[default_lang]
@@ -184,7 +217,7 @@ function _M.view(applet)
 	local response_status_code
 
 	-- get the config from ddos_config.map
-	local ddos_config = _M.get_ddos_config(applet, true)
+	local ddos_config = get_ddos_config(applet, true)
 
 	-- if request is GET, serve the challenge page
 	if applet.method == "GET" then
@@ -202,16 +235,15 @@ function _M.view(applet)
 		-- check if captcha is enabled, path+domain priority, then just domain, and 0 otherwise
 		local captcha_enabled = false
 		local path = url.getpath(applet.qs); --because on /.basedflare/bot-check?/whatever, .qs (query string) holds the old path
-
 		local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
-			local fp_suspicious = is_suspicious(applet:get_var("txn.fp_custom"))
-			local mode = ddos_map_json.m
-			if (mode == ProtectionMode.CAPTCHA_ALL
-				or ((mode == ProtectionMode.CAPTCHA_SUSPICIOUS_ONLY or mode == ProtectionMode.POW_ALL_CAPTCHA_SUSPICIOUS_ONLY) and fp_suspicious)) then
-	            captcha_enabled = true
-	        end
+			local ip = applet.sf:src()		
+			local fp = applet:get_var("txn.fp_custom")			
+			local asn = applet:get_var("req.asn")
+			local country_code = applet:get_var("req.xcc")
+			local _, validate_captcha, _ = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
+			captcha_enabled = validate_captcha
 		end
 
 		-- return simple json if they send accept: application/json header
@@ -358,7 +390,7 @@ function _M.view(applet)
 									"#" ..
 									given_challenge_hash ..
 									"#" .. given_expiry .. "#" .. given_answer .. "#" .. signature
-								local expiry_date_p = _M.secondsToDate(number_expiry)
+								local expiry_date_p = secondsToDate(number_expiry)
 								applet:add_header(
 									"set-cookie",
 									string.format(
@@ -420,7 +452,7 @@ function _M.view(applet)
 				local user_hash = utils.generate_challenge(applet, captcha_cookie_secret, user_key, ddos_config, true)
 				local signature = sha.hmac(sha.sha3_256, hmac_cookie_secret, user_key .. user_hash .. matched_expiry)
 				local combined_cookie = user_key .. "#" .. user_hash .. "#" .. matched_expiry .. "#" .. signature
-				local expiry_date_c = _M.secondsToDate(number_expiry)
+				local expiry_date_c = secondsToDate(number_expiry)
 				applet:add_header(
 					"set-cookie",
 					string.format(
@@ -488,7 +520,7 @@ local lookupvar_tbl = {
 
 -- set lang json in var for use with json_query sf for using translations in template files without a lua view
 function _M.set_lang_json(txn)
-	local lang = _M.get_first_language(txn, false)
+	local lang = get_first_language(txn, false)
 	local ls = locales_strings[lang]
 	if ls == nil then
 		ls = locales_strings[default_lang]
@@ -543,7 +575,7 @@ function _M.check_captcha_status(txn)
 		return
 	end
 	-- regenerate the user hash and compare it
-	local ddos_config = _M.get_ddos_config(txn, false)
+	local ddos_config = get_ddos_config(txn, false)
 	local generated_user_hash = utils.generate_challenge(txn, captcha_cookie_secret, given_user_key, ddos_config, false)
 	if generated_user_hash ~= given_user_hash then
 		return
@@ -579,7 +611,7 @@ function _M.check_pow_status(txn)
 		return
 	end
 	-- regenerate the challenge and compare it
-	local ddos_config = _M.get_ddos_config(txn, false)
+	local ddos_config = get_ddos_config(txn, false)
 	local generated_challenge_hash = utils.generate_challenge(txn, pow_cookie_secret, given_user_key, ddos_config, false)
 	if given_challenge_hash ~= generated_challenge_hash then
 		return
