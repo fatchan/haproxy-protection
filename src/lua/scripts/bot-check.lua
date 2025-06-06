@@ -160,9 +160,6 @@ local function determine_validation_settings(ddos_map_json, fp, ip, asn, country
 		validate_captcha = true
 	elseif mode == ProtectionMode.POW_ALL then
 		validate_pow = true
-	elseif mode == ProtectionMode.CAPTCHA_ALL then
-		validate_pow = true
-		validate_captcha = true
 	elseif mode == ProtectionMode.POW_ALL_CAPTCHA_SUS_ONLY and req_sus then
 		validate_pow = true
 		validate_captcha = req_sus
@@ -300,10 +297,10 @@ function _M.view(applet)
 			end
 		end
 
-		-- 		local extra_challenge = [[
-		-- <script src="/.basedflare/js/bc.js"></script>
-		-- <script src="/.basedflare/js/bm.min.js"></script>
-		-- 		]]
+		-- local extra_challenge = [[
+		-- 	<script src="/.basedflare/js/bc.js"></script>
+		-- 	<script src="/.basedflare/js/bm.min.js"></script>
+		-- ]]
 		local extra_challenge = ""
 
 		-- sub in the body sections
