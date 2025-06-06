@@ -183,9 +183,9 @@ function _M.decide_checks_necessary(txn)
 	if ddos_map_lookup ~= nil then
 		local ddos_map_json = json.decode(ddos_map_lookup)
 		local ip = txn.sf:src()
-		local fp = txn:get_var("txn.fp_custom")
-		local asn = txn:get_var("req.asn")
-		local country_code = txn.sf:hdr("X-Country-Code")
+		local fp = txn:get_var("txn.fp_custom") or ""
+		local asn = txn:get_var("req.asn") or ""
+		local country_code = txn.sf:hdr("X-Country-Code") or ""
 		local validate_pow, validate_captcha, _ = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
 		txn:set_var("txn.validate_pow", validate_pow)
 		txn:set_var("txn.validate_captcha", validate_captcha)
@@ -236,9 +236,9 @@ function _M.view(applet)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
 			local ip = applet.sf:src()		
-			local fp = applet:get_var("txn.fp_custom")			
-			local asn = applet:get_var("req.asn")
-			local country_code = applet:get_var("req.xcc")
+			local fp = applet:get_var("txn.fp_custom") or ""
+			local asn = applet:get_var("req.asn") or ""
+			local country_code = applet:get_var("req.xcc") or ""
 			local _, validate_captcha, _ = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
 			captcha_enabled = validate_captcha
 		end
