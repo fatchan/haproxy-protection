@@ -67,7 +67,7 @@ if (!window._basedflareAuto) {
 				redirect: "manual",
 			}).then((res) => {
 				if (res.status >= 400 && res.status < 500) {
-					clearCookiesForDomains(location.hostname);
+					this.clearCookiesForDomains(location.hostname);
 					console.error("Server rejected your submission.");
 				} else if (res.status >= 500) {
 					console.error("Server encountered an error.");
@@ -76,7 +76,7 @@ if (!window._basedflareAuto) {
 			}).catch((e) => {
 				console.error(e);
 			}).finally(() => {
-				clearCookiesForDomains(location.hostname);
+				this.clearCookiesForDomains(location.hostname);
 				localStorage.removeItem('_basedflare-auto');
 			});
 		};
@@ -86,7 +86,7 @@ if (!window._basedflareAuto) {
 			const lastCheckTime = localStorage.getItem('_basedflare-auto');
 			if (lastCheckTime) {
 				const lastCheckInt = parseInt(lastCheckTime);
-				if (Date.now() - lastCheckInt < 120)  {
+				if (Date.now() - lastCheckInt < 120000)  {
 					console.log('Already running recently')
 					return true;
 				} //else its too old, we just continue
