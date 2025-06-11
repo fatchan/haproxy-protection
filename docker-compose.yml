@@ -6,6 +6,7 @@ services:
       context: ./
       dockerfile: haproxy/Dockerfile
     volumes:
+      - shared-socket:/shared-sockets
       - ./haproxy/haproxy.cfg:/etc/haproxy/haproxy.cfg
       - ./haproxy/errors/:/etc/haproxy/errors/
       - ./haproxy/map/:/etc/haproxy/map/
@@ -67,3 +68,16 @@ services:
       - ./nginx/html2:/usr/share/nginx/html
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./nginx/ssl:/etc/nginx/certs
+
+  varnish:
+    network_mode: host
+    image: varnish:latest
+    volumes:
+      - shared-socket:/shared-sockets
+      - ./varnish/:/etc/varnish/
+    # command: varnishd -F -a /shared-sockets/haproxy-to-varnish-cache.sock -f /etc/varnish/default.vcl -s malloc,1G
+    command: varnishd -F -a /shared-sockets/haproxy-to-varnish-cache.sock -f /etc/varnish/default.vcl -s file,/var/lib/varnish/cache.bin,1G
+    user: root
+
+volumes:
+  shared-socket:
