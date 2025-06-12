@@ -41,7 +41,7 @@ sub vcl_recv {
 			if (req.method == "PURGE") {
 				return (purge);
 			} else if (req.method == "BAN") {
-				ban("obj.http.x-url ~ " + req.url + " && obj.http.x-host == " + req.http.host);
+				ban("obj.http.x-url ~ ^" + req.url + ".*" + " && obj.http.x-host == " + req.http.host);
 				return (synth(200, "Ban added"));
 			}
 		} else {
@@ -78,6 +78,9 @@ sub vcl_hash {
 
 ## caching behavior when fetching from backend
 sub vcl_backend_response {
+
+	set beresp.http.x-url = bereq.url; # Set for ban lurker
+	set beresp.http.x-host = bereq.http.host; # Set for ban lurker
 
 	set beresp.do_stream = true;  # Stream directly
 	set beresp.transit_buffer = 1M; # testing
@@ -131,6 +134,9 @@ sub vcl_backend_response {
 
 # when sending response
 sub vcl_deliver {
+
+	unset resp.http.x-url; # Unset what we set for ban lurker
+	unset resp.http.x-host; # Unset what we set for ban lurker
 
 	# add accept-ranges for backend reqs
 	if (req.http.Range) {
