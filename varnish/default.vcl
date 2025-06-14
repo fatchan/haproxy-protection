@@ -20,6 +20,13 @@ sub vcl_pipe {
 	return (pipe);
 }
 
+# custom simpler synth() template
+sub vcl_synth {
+    set resp.http.Content-Type = "text/plain; charset=utf-8";
+    set resp.body = "" + resp.status + " " + resp.reason;
+    return (deliver);
+}
+
 # incoming requests
 sub vcl_recv {
 
@@ -41,8 +48,8 @@ sub vcl_recv {
 			if (req.method == "PURGE") {
 				return (purge);
 			} else if (req.method == "BAN") {
-				ban("obj.http.x-url ~ ^" + req.url + ".*" + " && obj.http.x-host == " + req.http.host);
-				return (synth(200, "Ban added"));
+				ban("obj.http.x-url ~ ^" + req.http.X-BasedFlare-Purge-Url + ".*" + " && obj.http.x-host == " + req.http.X-BasedFlare-Purge-Host);
+				return (synth(200, "Banned " + "obj.http.x-url ~ ^" + req.http.X-BasedFlare-Purge-Url + ".*" + " && obj.http.x-host == " + req.http.X-BasedFlare-Purge-Host));
 			}
 		} else {
 			return (synth(405, "Not allowed"));
