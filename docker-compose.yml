@@ -11,11 +11,11 @@ services:
       - ./haproxy/errors/:/etc/haproxy/errors/
       - ./haproxy/map/:/etc/haproxy/map/
       - ./haproxy/template/:/etc/haproxy/template/
+      - ./haproxy/certs/:/etc/haproxy/certs/
       - ./src/lua/scripts/:/etc/haproxy/scripts/
       - ./src/lua/libs/:/etc/haproxy/libs/
       - ./src/js/:/etc/haproxy/js/
       - ./src/locales/:/etc/haproxy/locales/
-      - ./nginx/ssl/:/etc/haproxy/certs/
       - ../../Documents/dataplaneapi/build/dataplaneapi:/usr/local/bin/dataplaneapi
     environment:
       # test keys
