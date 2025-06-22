@@ -71,17 +71,13 @@ services:
 
   varnish:
     network_mode: host
-
-    # regular image
+    ### regular image
     image: varnish:latest
-    # command: varnishd -F -a /shared-sockets/haproxy-to-varnish-cache.sock -f /etc/varnish/default.vcl -s malloc,1G -p feature=+http2 -p
     command: varnishd -F -a /shared-sockets/haproxy-to-varnish-cache.sock -f /etc/varnish/default.vcl -s file,/var/lib/varnish/cache.bin,1G -p feature=+http2
-
-    # custom dockerfile w/ logs
+    ### custom dockerfile w/ logs
     # build:
     #   context: ./varnish
     #   dockerfile: Dockerfile
-
     deploy:
       resources:
         limits:
@@ -92,6 +88,14 @@ services:
       - shared-socket:/shared-sockets
       - ./varnish/:/etc/varnish/
     user: root
+
+  # tor:
+  #   network_mode: host
+  #   build:
+  #     context: ./
+  #     dockerfile: tor/Dockerfile
+  #   volumes:
+  #     - ./tor/torrc.default:/etc/tor/torrc
 
 volumes:
   shared-socket:

@@ -1,5 +1,6 @@
 Log notice stdout
 DataDirectory /var/lib/tor
 HiddenServiceDir /var/lib/tor/hidden_service/
-HiddenServicePort 80 haproxy:80
+HiddenServicePort 80 127.0.0.1:8080
+HiddenServicePort 443 127.0.0.1:8081
 HiddenServiceExportCircuitID haproxy
