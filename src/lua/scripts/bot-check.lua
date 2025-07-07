@@ -129,28 +129,33 @@ end
 
 local function is_request_sus(level, fp, ip, asn, country_code)
     local req_sus = false
+    local sus_level = 0
     local is_bfp, is_vpn, is_dc, is_t1 = check_sus(fp, ip, asn, country_code)
 	-- todo bitfield
     if level == 1 and is_t1 then
         req_sus = true
+        sus_level = 1
     elseif level == 2 and (is_t1 or is_bfp) then
         req_sus = true
+        sus_level = 2
     elseif level == 3 and (is_t1 or is_vpn or is_bfp) then
         req_sus = true
+        sus_level = 3
     elseif level == 4 and (is_t1 or is_vpn or is_bfp or is_dc) then
         req_sus = true
+        sus_level = 4
     end
-    return req_sus
+    return req_sus, sus_level
 end
 
 local function determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
 	local mode = ddos_map_json.m
 	local validate_pow = false
 	local validate_captcha = false
-	local req_sus = is_request_sus(ddos_map_json.l, fp, ip, asn, country_code)
+	local req_sus, sus_level = is_request_sus(ddos_map_json.l, fp, ip, asn, country_code)
 
 	if mode == ProtectionMode.NONE then
-		return false, false, req_sus
+		return false, false, req_sus, sus_level
 	end
 
 	if mode == ProtectionMode.POW_SUS_ONLY and req_sus then
@@ -168,7 +173,7 @@ local function determine_validation_settings(ddos_map_json, fp, ip, asn, country
 		validate_pow = true
 	end
 
-	return validate_pow, validate_captcha, req_sus
+	return validate_pow, validate_captcha, req_sus, sus_level
 end
 
 local function secondsToDate(seconds)
@@ -186,9 +191,13 @@ function _M.decide_checks_necessary(txn)
 		local fp = txn:get_var("txn.fp_custom") or ""
 		local asn = txn:get_var("req.asn") or ""
 		local country_code = txn.sf:hdr("X-Country-Code") or ""
-		local validate_pow, validate_captcha, _ = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
+		local validate_pow, validate_captcha, _, sus_level = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
 		txn:set_var("txn.validate_pow", validate_pow)
 		txn:set_var("txn.validate_captcha", validate_captcha)
+		if sus_level then
+			print(sus_level)
+			txn.http:req_set_header("X-Sus-Level", sus_level)
+		end
 	end
 end
 
