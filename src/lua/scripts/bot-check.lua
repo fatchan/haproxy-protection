@@ -195,7 +195,6 @@ function _M.decide_checks_necessary(txn)
 		txn:set_var("txn.validate_pow", validate_pow)
 		txn:set_var("txn.validate_captcha", validate_captcha)
 		if sus_level then
-			print(sus_level)
 			txn.http:req_set_header("X-Sus-Level", sus_level)
 		end
 	end
