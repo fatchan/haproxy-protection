@@ -6,6 +6,11 @@ local utils = require("utils")
 local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local map_space_split_rexex = "([^%s]+)%s+([^%s]+)"
 
+local socket = require('socket')
+function sleep(sec)
+    socket.select(nil, nil, sec)
+end
+
 -- setup initial server backends based on hosts.map
 function setup_servers()
 	if pow_difficulty < 8 then
@@ -22,10 +27,11 @@ function setup_servers()
 	local verify_none = os.getenv("VERIFY_BACKEND_SSL_VERIFYNONE")
 	local counter = 1
 	-- NOTE: using tcp socket to interact with runtime API because lua can't add servers
-	local tcp = core.tcp();
-	tcp:settimeout(10);
-	tcp:connect("127.0.0.1", 2000); --TODO: configurable port
 	while line do
+
+		local tcp = core.tcp();
+		tcp:settimeout(10);
+		tcp:connect("127.0.0.1", 2000); --TODO: configurable port
 		local domain, backend_data = line:match(map_space_split_rexex)
 		local backend_host, continent_code = backend_data:match(server_cn_split_regex)
 		local new_map_value = server_prefix .. counter .. '|' .. continent_code
@@ -43,23 +49,40 @@ function setup_servers()
 		if verify_backend_ssl ~= nil then
 			if verify_none ~= nil then -- for development use only
 				tcp:send(string.format(
-					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
+					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);\n",
 					server_name, backend_host))
 			else
 				tcp:send(string.format(
-					"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
+					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);\n",
 					server_name, backend_host))
 			end
 		else
-			tcp:send(string.format("add server %s %s;", server_name, backend_host))
+			tcp:send(string.format("add server %s %s;\n", server_name, backend_host))
 		end
-		tcp:send(string.format("enable server %s;", server_name))
-		tcp:send(string.format("enable health %s;", server_name))
+		tcp:close()
+
+		sleep(0.1)
+
+		local tcp2 = core.tcp();
+		tcp2:settimeout(10);
+		tcp2:connect("127.0.0.1", 2000); --TODO: configurable port
+		tcp2:send(string.format("enable server %s;\n", server_name))
+		tcp2:close()
+
+		sleep(0.1)
+
+		local tcp3 = core.tcp();
+		tcp3:settimeout(10);
+		tcp3:connect("127.0.0.1", 2000); --TODO: configurable port
+		tcp3:send(string.format("enable health %s;\n", server_name))
+		tcp3:close()
+
+		sleep(0.1)
+
 		line = handle:read("*line")
 		counter = counter + 1
 	end
 	handle:close()
-	tcp:close()
 end
 
 core.register_task(setup_servers)
