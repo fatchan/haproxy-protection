@@ -51,7 +51,7 @@ function setup_servers()
 					server_name, backend_host))
 			else
 				tcp:send(string.format(
-					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
+					"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
 					server_name, backend_host))
 			end
 		else
