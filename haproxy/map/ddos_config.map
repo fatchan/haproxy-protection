@@ -1,1 +1,1 @@
-localhost {"pd":21,"pt":"argon2","cex":999,"cip":true,"js":true}
+localhost {"pd":21,"pt":"argon2","cex":999,"cip":true,"js":false}
