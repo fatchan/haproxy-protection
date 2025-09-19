@@ -111,41 +111,41 @@ local function get_ddos_config(context, is_applet)
 end
 
 local ProtectionMode = {
-    NONE = 0,
-    POW_SUS_ONLY = 1,
-    CAPTCHA_SUS_ONLY = 2,
-    POW_ALL = 3,
-    POW_ALL_CAPTCHA_SUS_ONLY = 4,
-    CAPTCHA_ALL = 5
+	NONE = 0,
+	POW_SUS_ONLY = 1,
+	CAPTCHA_SUS_ONLY = 2,
+	POW_ALL = 3,
+	POW_ALL_CAPTCHA_SUS_ONLY = 4,
+	CAPTCHA_ALL = 5
 }
 
 local function check_sus(fp, ip, asn, country_code)
-    local is_bfp = bfp_map:lookup(fp) ~= nil
-    local is_vpn = vpn_map:lookup(asn) ~= nil
-    local is_dc = dc_map:lookup(asn) ~= nil
-    local is_t1 = country_code == "T1"
-    return is_bfp, is_vpn, is_dc, is_t1
+	local is_bfp = bfp_map:lookup(fp) ~= nil
+	local is_vpn = vpn_map:lookup(asn) ~= nil
+	local is_dc = dc_map:lookup(asn) ~= nil
+	local is_t1 = country_code == "T1"
+	return is_bfp, is_vpn, is_dc, is_t1
 end
 
 local function is_request_sus(level, fp, ip, asn, country_code)
-    local req_sus = false
-    local sus_level = 0
-    local is_bfp, is_vpn, is_dc, is_t1 = check_sus(fp, ip, asn, country_code)
+	local req_sus = false
+	local sus_level = 0
+	local is_bfp, is_vpn, is_dc, is_t1 = check_sus(fp, ip, asn, country_code)
 	-- todo bitfield
-    if level == 1 and is_t1 then
-        req_sus = true
-        sus_level = 1
-    elseif level == 2 and (is_t1 or is_bfp) then
-        req_sus = true
-        sus_level = 2
-    elseif level == 3 and (is_t1 or is_vpn or is_bfp) then
-        req_sus = true
-        sus_level = 3
-    elseif level == 4 and (is_t1 or is_vpn or is_bfp or is_dc) then
-        req_sus = true
-        sus_level = 4
-    end
-    return req_sus, sus_level
+	if level == 1 and is_t1 then
+		req_sus = true
+		sus_level = 1
+	elseif level == 2 and (is_t1 or is_bfp) then
+		req_sus = true
+		sus_level = 2
+	elseif level == 3 and (is_t1 or is_vpn or is_bfp) then
+		req_sus = true
+		sus_level = 3
+	elseif level == 4 and (is_t1 or is_vpn or is_bfp or is_dc) then
+		req_sus = true
+		sus_level = 4
+	end
+	return req_sus, sus_level
 end
 
 local function determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
@@ -191,7 +191,8 @@ function _M.decide_checks_necessary(txn)
 		local fp = txn:get_var("txn.fp_custom") or ""
 		local asn = txn:get_var("req.asn") or ""
 		local country_code = txn.sf:hdr("X-Country-Code") or ""
-		local validate_pow, validate_captcha, _, sus_level = determine_validation_settings(ddos_map_json, fp, ip, asn, country_code)
+		local validate_pow, validate_captcha, _, sus_level = determine_validation_settings(ddos_map_json, fp, ip, asn,
+			country_code)
 		txn:set_var("txn.validate_pow", validate_pow)
 		txn:set_var("txn.validate_captcha", validate_captcha)
 		if sus_level then
@@ -243,7 +244,7 @@ function _M.view(applet)
 		local ddos_map_lookup = ddos_map:lookup(host .. path) or ddos_map:lookup(host)
 		if ddos_map_lookup ~= nil then
 			local ddos_map_json = json.decode(ddos_map_lookup)
-			local ip = applet.sf:src()		
+			local ip = applet.sf:src()
 			local fp = applet:get_var("txn.fp_custom") or ""
 			local asn = applet:get_var("req.asn") or ""
 			local country_code = applet:get_var("req.xcc") or ""
@@ -257,8 +258,8 @@ function _M.view(applet)
 			local local_pow_combined = string.format('%s#%d#%s#%s', ddos_config["pt"], math.ceil(ddos_config["pd"] / 8),
 				argon_time, argon_kb)
 			response_body = "{\"ch\":\"" ..
-				combined_challenge ..
-				"\",\"ca\":" .. (captcha_enabled and "true" or "false") .. ",\"pow\":\"" .. local_pow_combined .. "\"}"
+					combined_challenge ..
+					"\",\"ca\":" .. (captcha_enabled and "true" or "false") .. ",\"pow\":\"" .. local_pow_combined .. "\"}"
 			applet:set_status(403)
 			applet:add_header("content-type", "application/json; charset=utf-8")
 			applet:add_header("content-length", string.len(response_body))
@@ -276,7 +277,7 @@ function _M.view(applet)
 		else
 			pow_body = string.format(
 				templates.pow_section,
-				ll["This process is automatic, please wait a moment..."]
+				ddos_config["sl"] and " " or ll["This process is automatic, please wait a moment..."]
 			)
 			if ddos_config["js"] ~= false then
 				local noscript_extra
@@ -284,7 +285,7 @@ function _M.view(applet)
 				if ddos_config["pt"] == "argon2" then
 					noscript_extra = templates.noscript_extra_argon2
 					noscript_prompt = ll
-						["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
+							["Run this in a linux terminal (requires <code>argon2</code> package installed):"]
 				else
 					noscript_extra = templates.noscript_extra_sha256
 					noscript_prompt = ll["Run this in a linux terminal (requires <code>perl</code>):"]
@@ -305,11 +306,10 @@ function _M.view(applet)
 			end
 		end
 
-		-- local extra_challenge = [[
-		-- 	<script src="/.basedflare/js/bc.js"></script>
-		-- 	<script src="/.basedflare/js/bm.min.js"></script>
-		-- ]]
-		local extra_challenge = ""
+		local extra_challenge = ddos_config["sl"] and [[
+			<script src="/.basedflare/js/bc.min.js"></script>
+			<script src="/.basedflare/js/bm.min.js"></script>
+		]] or ""
 
 		-- sub in the body sections
 		response_body = string.format(
@@ -392,9 +392,9 @@ function _M.view(applet)
 								local signature = sha.hmac(sha.sha3_256, hmac_cookie_secret,
 									given_user_key .. given_challenge_hash .. given_expiry .. given_answer)
 								local combined_cookie = given_user_key ..
-									"#" ..
-									given_challenge_hash ..
-									"#" .. given_expiry .. "#" .. given_answer .. "#" .. signature
+										"#" ..
+										given_challenge_hash ..
+										"#" .. given_expiry .. "#" .. given_answer .. "#" .. signature
 								local expiry_date_p = secondsToDate(number_expiry)
 								applet:add_header(
 									"set-cookie",
@@ -591,7 +591,6 @@ function _M.check_captcha_status(txn)
 	if given_signature == generated_signature then
 		return txn:set_var("txn.captcha_passed", true)
 	end
-
 end
 
 -- check if pow cookie is valid
@@ -627,7 +626,6 @@ function _M.check_pow_status(txn)
 	if given_signature == generated_signature then
 		return txn:set_var("txn.pow_passed", true)
 	end
-
 end
 
 return _M
