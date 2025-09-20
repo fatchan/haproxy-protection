@@ -58,25 +58,6 @@ const wasmSupported = (() => {
 	return false;
 })();
 
-// const registerServiceWorker = async () => {
-// if ("serviceWorker" in navigator) {
-// try {
-// const registration = await navigator.serviceWorker.register("/.basedflare/js/serviceworker.min.js", {
-// scope: "/",
-// });
-// if (registration.installing) {
-// console.log("BasedFlare service worker installing");
-// } else if (registration.waiting) {
-// console.log("BasedFlare service worker installed");
-// } else if (registration.active) {
-// console.log("BasedFlare service worker active");
-// }
-// } catch (error) {
-// console.error(`BasedFlare worker registration failed: ${error}`);
-// }
-// }
-// };
-
 function clearCookiesForDomains(domain) {
 	const parts = ['www', ...domain.split('.')];
 	for (let i = 0; i < parts.length - 1; i++) {
@@ -129,6 +110,9 @@ const powFinished = new Promise((resolve) => {
 		const hasCaptcha = document.getElementById("captcha");
 		if (hasCaptcha) {
 			// updateElem(".powstatus", __("Waiting for captcha."), "#31cc31");
+		} else if (window?._bft && loader && window.canvas) {
+			loader.style.display = 'none';
+			window.canvas.style.display = 'flex';
 		} else {
 			// updateElem(".powstatus", __("Submitting..."), "#31cc31");
 			makeLoaderGreen();
@@ -202,7 +186,7 @@ const powFinished = new Promise((resolve) => {
 			}
 			const isTor = location.hostname.endsWith(".onion");
 			/* Try to use all threads on tor, because tor limits threads for anti fingerprinting but this
-			   makes it awfully slow because workerThreads will always be = 1 */
+				 makes it awfully slow because workerThreads will always be = 1 */
 			const workerThreads = (isTor || cpuThreads === 2) ?
 				cpuThreads :
 				Math.max(Math.ceil(cpuThreads / 2), cpuThreads - 1);
@@ -235,7 +219,7 @@ const powFinished = new Promise((resolve) => {
 				submitPow(`${pow}#${answer}`);
 			};
 			for (let i = 0; i < workerThreads; i++) {
-				const powWorker = new Worker("/.basedflare/js/worker.min.js");
+				const powWorker = new Worker("/.basedflare/js/wk.min.js");
 				powWorker.onmessage = messageHandler;
 				workers.push(powWorker);
 			}

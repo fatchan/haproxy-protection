@@ -9,7 +9,7 @@ if (!window._basedflareAuto) {
 			this.cookieMinLife = cookieMinLife;
 			this.maxFails = maxFails;
 			this.timeout = null;
-			this.scriptSrc = "/.basedflare/js/argon2.min.js";
+			this.scriptSrc = "/.basedflare/js/a2.min.js";
 			this.checkCookie();
 		}
 
@@ -116,7 +116,7 @@ if (!window._basedflareAuto) {
 			const isTor = location.hostname.endsWith(".onion");
 			const workerThreads = (isTor || cpuThreads === 2) ? cpuThreads : Math.max(Math.ceil(cpuThreads / 2), cpuThreads - 1);
 			for (let i = 0; i < workerThreads; i++) {
-				const powWorker = new Worker("/.basedflare/js/worker.min.js");
+				const powWorker = new Worker("/.basedflare/js/wk.min.js");
 				powWorker.onmessage = (e) => this.messageHandler(e, json);
 				this.workers.push(powWorker);
 				powWorker.postMessage([
