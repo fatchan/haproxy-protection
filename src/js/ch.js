@@ -112,6 +112,7 @@ const powFinished = new Promise((resolve) => {
 			// updateElem(".powstatus", __("Waiting for captcha."), "#31cc31");
 		} else if (window?._bft && loader && window.canvas) {
 			loader.style.display = 'none';
+			document.getElementById('msg').style.display = 'none';
 			window.canvas.style.display = 'flex';
 		} else {
 			// updateElem(".powstatus", __("Submitting..."), "#31cc31");
@@ -124,11 +125,17 @@ const powFinished = new Promise((resolve) => {
 		stopPow();
 		const dummyTime = 3500 - (Date.now() - start);
 		window.setTimeout(() => {
-			(window?._bft?.() || Promise.resolve()).then(() => {
+			if (document.getElementById("captcha")) {
 				resolve({
 					answer
 				});
-			});
+			} else {
+				(window?._bft?.() || Promise.resolve()).then(() => {
+					resolve({
+						answer
+					});
+				});
+			}
 		}, dummyTime);
 	};
 

@@ -8,7 +8,7 @@ async function nativeHash(data, method) {
 onmessage = async function(e) {
 	const [userkey, challenge, diff, diffString, powOpts, id, threads] = e.data;
 	if (powOpts.mode === "argon2") {
-		importScripts('/.basedflare/js/argon2.min.js');
+		importScripts('/.basedflare/js/a2.min.js');
 	}
 	console.log('Worker thread', id, 'started');
 	let i = id;

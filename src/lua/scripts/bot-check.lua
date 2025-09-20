@@ -277,7 +277,8 @@ function _M.view(applet)
 		else
 			pow_body = string.format(
 				templates.pow_section,
-				ddos_config["sl"] and " " or ll["This process is automatic, please wait a moment..."]
+				-- ddos_config["sl"] and " " or ll["This process is automatic, please wait a moment..."]
+				ll["This process is automatic, please wait a moment..."]
 			)
 			if ddos_config["js"] ~= false then
 				local noscript_extra

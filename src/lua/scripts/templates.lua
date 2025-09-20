@@ -108,7 +108,7 @@ _M.noscript_extra_sha256 = [[
 
 -- animation while waiting
 _M.pow_section = [[
-		<span>
+		<span id="msg">
 			%s
 		</span>
 		<div class="jsonly">
