@@ -4,11 +4,17 @@ const shapeWidth = 50;
 const shapeHeight = 20;
 let varianceX = 0;
 let isMover = false;
+let isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 async function init() {
 	customModule = await createChallengeModule();
 	draw_module();
 }
+
+window?.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', (e) => {
+	isDark = e.matches;
+	draw_module()
+});
 
 async function pointer() {
 	return new Promise((resolve) => {
@@ -25,19 +31,26 @@ async function pointer() {
 }
 
 function draw_module() {
+	startX < 3 && (startX = 3);
+	startX > 197 && (startX = 197);
 	window.canvas = document.getElementById('canvas');
 	const ctx = canvas.getContext('2d');
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	ctx.fillStyle = '#25a003';
-	draw_main(ctx, startX, 3, shapeWidth, 34, 5);
+	ctx.fillStyle = isDark ? '#464646' : '#F1F1F1';
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	draw_main(ctx, startX, 3, shapeWidth, 34, 8);
+	const fillColor = isDark ? '#c5c8c6' : '#333';
+	ctx.fillStyle = fillColor;
+	ctx.strokeStyle = fillColor;
 	draw_guide(ctx, 140, 29);
-	ctx.fillStyle = '#000';
-	ctx.font = "14px Arial";
+	ctx.fillStyle = fillColor;
+	ctx.font = 'bold 14px Arial';
 	ctx.textAlign = 'center';
 	ctx.fillText('Drag to verify', canvas.width / 2, 20);
 }
 
 function draw_main(ctx, x, y, width, height, radius) {
+	ctx.fillStyle = isDark ? '#6b93f7' : '#3BD510';
 	ctx.beginPath();
 	ctx.moveTo(x + radius, y);
 	ctx.lineTo(x + width - radius, y);
@@ -53,17 +66,14 @@ function draw_main(ctx, x, y, width, height, radius) {
 }
 
 function draw_guide(ctx, x, y) {
-	ctx.fillStyle = '#000';
-	ctx.fillRect(110, y - 0.5, 30, 1.5);
-	ctx.fillStyle = '#000';
-	ctx.strokeStyle = '#000';
+	ctx.fillRect(110, y - 1, 30, 2);
 	ctx.beginPath();
 	ctx.moveTo(x, y);
 	ctx.lineTo(x - 10, y + 5);
 	ctx.moveTo(x, y);
 	ctx.lineTo(x - 10, y - 5);
 	ctx.closePath();
-	ctx.lineWidth = 1.5;
+	ctx.lineWidth = 2;
 	ctx.stroke();
 }
 

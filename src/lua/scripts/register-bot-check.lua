@@ -2,61 +2,75 @@ package.path = package.path .. "./?.lua;/etc/haproxy/scripts/?.lua;/etc/haproxy/
 
 local bot_check = require("bot-check")
 local utils = require("utils")
-local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local server_port_split_pattern = "([^:]+):(%d+)"
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local haproxy_cn = os.getenv("HAPROXY_CONTINENT") or "XX" -- should never be XX but avoid typing issue
-
+local json = require("json")
 
 function Get_server_info(txn, return_ip)
-    local key = txn.sf:hdr("Host")
-    local target_backend_cn = haproxy_cn
-    local value = backends_map:lookup(key or "")
-    
-    if value ~= nil then
-        local filtered_backends = {}
-        local all_backends = {}
-        local vals = utils.split(value, ",")
-        
-        -- Single pass to filter and collect backends
-        for _, backend in ipairs(vals) do
-            local backend_server_name, backend_cn = backend:match(server_cn_split_regex)
-            if backend_server_name then
-                table.insert(all_backends, backend_server_name)
-                if backend_cn == target_backend_cn then
-                    table.insert(filtered_backends, backend_server_name)
-                end
-            end
-        end
-        
-        -- Randomly select from filtered backends if available
-        local selected_backend
-        if #filtered_backends > 0 then
-            selected_backend = filtered_backends[math.random(#filtered_backends)]
-        elseif #all_backends > 0 then
-            -- If no filtered backends, randomly select from all backends
-            selected_backend = all_backends[math.random(#all_backends)]
-        end
-        
-        if selected_backend then
-            if return_ip then
-                -- todo: more ifs here?
-                local s_ip, _ = core.proxies["servers"]["servers"][selected_backend]:get_addr():match(server_port_split_pattern)
-                return s_ip
-            else
-                return selected_backend
-            end
-        end
-    end
-    return ""
+	local key = txn.sf:hdr("Host")
+	local target_backend_cn = haproxy_cn
+	local value = backends_map:lookup(key or "")
+
+	if value ~= nil then
+		local filtered_backends = {}
+		local all_backends = {}
+		-- decode value as JSON array of objects {h, cn, xp} (h=server name)
+		local decoded = json.decode(value) --pcall?
+		if type(decoded) ~= "table" then
+			print(string.format("invalid backends.map JSON for key=%s value=%s", tostring(key), tostring(value)))
+			return ""
+		end
+
+		for _, obj in ipairs(decoded) do
+			if type(obj) == "table" and obj.h then
+				local cport = tonumber(txn.sf:hdr("txn-cport")) or 0
+				local xp_val = obj.xp
+				-- if client requested non-default port and this backend disables extra ports, skip adding it when return_ip mode
+				-- print(return_ip, cport, xp_val)
+				if not (return_ip and cport ~= 80 and cport ~= 443 and xp_val == false) then
+					table.insert(all_backends, obj.h)
+					if tostring(obj.cn or "") == target_backend_cn then
+						table.insert(filtered_backends, obj.h)
+					end
+				end -- else xp disabled for extra ports; do not include this backend for IP-returning on extra port
+			else
+				print(string.format("invalid backend object in backends.map for key=%s value=%s", tostring(key), tostring(value)))
+				return ""
+			end
+		end
+
+		-- Randomly select from filtered backends if available
+		local selected_backend
+		if #filtered_backends > 0 then
+			selected_backend = filtered_backends[math.random(#filtered_backends)]
+		elseif #all_backends > 0 then
+			-- If no filtered backends, randomly select from all backends
+			selected_backend = all_backends[math.random(#all_backends)]
+		end
+
+		if selected_backend then
+			if return_ip then
+				-- todo: more ifs here?
+				local s_ip, _ = core.proxies["servers"]["servers"][selected_backend]:get_addr():match(server_port_split_pattern)
+				-- print(s_ip)
+				return s_ip
+			else
+				-- print(selected_backend)
+				return selected_backend
+			end
+		end
+	end
+	-- print(0)
+	return 0 -- for -m bool for xp, see https://docs.haproxy.org/3.2/configuration.html#7.1.1 0 = false, anythign else = true
 end
 
 function Get_server_ip(txn)
-    return Get_server_info(txn, true)
+	return Get_server_info(txn, true)
 end
 
 function Get_server_names(txn)
-    return Get_server_info(txn, false)
+	return Get_server_info(txn, false)
 end
 
 core.register_fetches("get_server_names", Get_server_names)

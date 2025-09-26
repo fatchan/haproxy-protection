@@ -1,7 +1,7 @@
-localhost 127.0.0.1:10080|XX
-localhost 127.0.0.1:18080|XX
-localhost 127.0.0.1:18880|XX
-localhost 127.0.0.1:12052|XX
-localhost 127.0.0.1:12084|XX
-localhost 127.0.0.1:12088|XX
-localhost 127.0.0.1:12097|XX
+localhost {"h":"127.0.0.1:10080","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:18080","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:18880","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:12052","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:12084","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:12088","cn":"XX","xp":false}
+localhost {"h":"127.0.0.1:12097","cn":"XX","xp":false}

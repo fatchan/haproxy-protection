@@ -1,13 +1,13 @@
 package.path = package.path .. "./?.lua;/etc/haproxy/scripts/?.lua;/etc/haproxy/libs/?.lua"
 
+local json = require("json")
 local pow_difficulty = tonumber(os.getenv("POW_DIFFICULTY") or 18)
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local utils = require("utils")
-local server_cn_split_regex = "([^;]+)|(%u%u)$"
 local map_space_split_rexex = "([^%s]+)%s+([^%s]+)"
 
--- setup initial server backends based on hosts.map
-function setup_servers()
+-- setup initial server backends based on hosts.map (JSON values required)
+local function setup_servers()
 	if pow_difficulty < 8 then
 		error("POW_DIFFICULTY must be > 8. Around 16-32 is better")
 	end
@@ -26,39 +26,52 @@ function setup_servers()
 	tcp:settimeout(10);
 	tcp:connect("127.0.0.1", 2000);
 	tcp:send("prompt i;\n")
-	
+
 	while line do
-
 		local domain, backend_data = line:match(map_space_split_rexex)
-		local backend_host, continent_code = backend_data:match(server_cn_split_regex)
-		local new_map_value = server_prefix .. counter .. '|' .. continent_code
-		local existing_map_value = backends_map:lookup(domain)
-		if existing_map_value ~= nil then
-			local current_backends = utils.split(existing_map_value, ",")
-			if not utils.contains(current_backends, new_map_value) then
-				new_map_value = new_map_value .. "," .. existing_map_value
-			end
-		end
-		print("setting hosts.map " .. domain .. " " .. new_map_value)
-		core.set_map("/etc/haproxy/map/backends.map", domain, new_map_value)
-		local server_name = "servers/websrv" .. counter
+		-- backend JSON like {"h":"host:port","cn":"CN","xp":true/false}
+		local backend_host, continent_code
 
-		--NOTE: if you have a proper CA setup,
-		if verify_backend_ssl ~= nil then
-			if verify_none ~= nil then -- for development use only
-				tcp:send(string.format(
-					"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
-					server_name, backend_host))
-			else
-				tcp:send(string.format(
-					"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
-					server_name, backend_host))
+		-- parse JSON value (direct json.decode as requested)
+		local obj = json.decode(backend_data) --pcall?
+		if type(obj) == "table" then
+			backend_host = tostring(obj.h)
+			continent_code = tostring(obj.cn or "")
+
+			local websrv = "websrv" .. counter
+			local server_name = "servers/" .. websrv
+			local new_server_entry = { h = websrv, cn = continent_code or "", xp = obj.xp }
+			local existing_map_value = backends_map:lookup(domain)
+			local entries = {}
+			if existing_map_value ~= nil then
+				local decoded = json.decode(existing_map_value) -- assume valid JSON array?
+				if type(decoded) == "table" then
+					for _, v in ipairs(decoded) do table.insert(entries, v) end
+				end
 			end
-		else
-			tcp:send(string.format("add server %s %s;", server_name, backend_host))
+			table.insert(entries, new_server_entry) -- append new entry
+			local new_map_value = json.encode(entries)
+			print("setting hosts.map " .. domain .. " " .. new_map_value)
+			core.set_map("/etc/haproxy/map/backends.map", domain, new_map_value)
+
+
+			--NOTE: if you have a proper CA setup,
+			if verify_backend_ssl ~= nil then
+				if verify_none ~= nil then -- for development use only
+					tcp:send(string.format(
+						"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
+						server_name, backend_host))
+				else
+					tcp:send(string.format(
+						"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
+						server_name, backend_host))
+				end
+			else
+				tcp:send(string.format("add server %s %s;", server_name, backend_host))
+			end
+			tcp:send(string.format("enable server %s;", server_name))
+			tcp:send(string.format("enable health %s;\n", server_name)) -- NOTE: newline to send commands
 		end
-		tcp:send(string.format("enable server %s;", server_name))
-		tcp:send(string.format("enable health %s;\n", server_name)) -- NOTE: newline to send commands
 
 		line = handle:read("*line")
 		counter = counter + 1
