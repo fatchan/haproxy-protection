@@ -1,7 +1,6 @@
 let customModule;
-let startX = 3;
+let startX = 4;
 const shapeWidth = 50;
-const shapeHeight = 20;
 let varianceX = 0;
 let isMover = false;
 let isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -31,14 +30,15 @@ async function pointer() {
 }
 
 function draw_module() {
-	startX < 3 && (startX = 3);
+	startX < 3 && (startX = 4);
 	startX > 197 && (startX = 197);
+	!isMover && (startX = 4);
 	window.canvas = document.getElementById('canvas');
 	const ctx = canvas.getContext('2d');
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	ctx.fillStyle = isDark ? '#464646' : '#F1F1F1';
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
-	draw_main(ctx, startX, 3, shapeWidth, 34, 8);
+	draw_main(ctx, startX, 4, shapeWidth, 32, 8);
 	const fillColor = isDark ? '#c5c8c6' : '#333';
 	ctx.fillStyle = fillColor;
 	ctx.strokeStyle = fillColor;
@@ -84,6 +84,8 @@ function correct_outline() {
 	if (isTouched) {
 		unlisten();
 		window._bfts = true;
+	} else {
+		draw_module();
 	}
 }
 
