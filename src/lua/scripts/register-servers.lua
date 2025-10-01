@@ -5,6 +5,7 @@ local pow_difficulty = tonumber(os.getenv("POW_DIFFICULTY") or 18)
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local utils = require("utils")
 local map_space_split_rexex = "([^%s]+)%s+([^%s]+)"
+local check_options = " check observe layer4 inter 1s"
 
 -- setup initial server backends based on hosts.map (JSON values required)
 local function setup_servers()
@@ -29,14 +30,15 @@ local function setup_servers()
 
 	while line do
 		local domain, backend_data = line:match(map_space_split_rexex)
-		-- backend JSON like {"h":"host:port","cn":"CN","xp":true/false}
-		local backend_host, continent_code
+		-- backend JSON like {"h":"host:port","cn":"CN","xp":true/false,"c":true/false}
+		local backend_host, continent_code, check_string
 
 		-- parse JSON value (direct json.decode as requested)
 		local obj = json.decode(backend_data) --pcall?
 		if type(obj) == "table" then
 			backend_host = tostring(obj.h)
 			continent_code = tostring(obj.cn or "")
+			check_string = obj.c and check_options or ""
 
 			local websrv = "websrv" .. counter
 			local server_name = "servers/" .. websrv
@@ -59,15 +61,15 @@ local function setup_servers()
 			if verify_backend_ssl ~= nil then
 				if verify_none ~= nil then -- for development use only
 					tcp:send(string.format(
-						"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host);",
-						server_name, backend_host))
+						"add server %s %s ssl verify none ca-file ca-certificates.crt sni req.hdr(Host)%s;",
+						server_name, backend_host, check_string))
 				else
 					tcp:send(string.format(
-						"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host);",
-						server_name, backend_host))
+						"add server %s %s ssl verify required ca-file ca-certificates.crt sni req.hdr(Host)%s;",
+						server_name, backend_host, check_string))
 				end
 			else
-				tcp:send(string.format("add server %s %s;", server_name, backend_host))
+				tcp:send(string.format("add server %s %s%s;", server_name, backend_host, check_string))
 			end
 			tcp:send(string.format("enable server %s;", server_name))
 			tcp:send(string.format("enable health %s;\n", server_name)) -- NOTE: newline to send commands

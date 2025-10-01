@@ -25,15 +25,26 @@ function Get_server_info(txn, return_ip)
 		for _, obj in ipairs(decoded) do
 			if type(obj) == "table" and obj.h then
 				local cport = tonumber(txn.sf:hdr("txn-cport")) or 0
+				local backend_server_name = obj.h
 				local xp_val = obj.xp
+				local should_use_check = obj.c
+
+				-- server always considered up if check not enabled
+				local server_up = true
+				if should_use_check then
+					server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
+				end
+
 				-- if client requested non-default port and this backend disables extra ports, skip adding it when return_ip mode
-				-- print(return_ip, cport, xp_val)
-				if not (return_ip and cport ~= 80 and cport ~= 443 and xp_val == false) then
-					table.insert(all_backends, obj.h)
+				local valid_server = (not (return_ip and cport ~= 80 and cport ~= 443 and xp_val == false))
+
+				if valid_server and server_up then
+					table.insert(all_backends, backend_server_name)
 					if tostring(obj.cn or "") == target_backend_cn then
-						table.insert(filtered_backends, obj.h)
+						table.insert(filtered_backends, backend_server_name)
 					end
-				end -- else xp disabled for extra ports; do not include this backend for IP-returning on extra port
+				end
+				-- else xp disabled for extra ports; do not include this backend for IP-returning on extra port
 			else
 				print(string.format("invalid backend object in backends.map for key=%s value=%s", tostring(key), tostring(value)))
 				return ""
@@ -61,7 +72,6 @@ function Get_server_info(txn, return_ip)
 			end
 		end
 	end
-	-- print(0)
 	return 0 -- for -m bool for xp, see https://docs.haproxy.org/3.2/configuration.html#7.1.1 0 = false, anythign else = true
 end
 
