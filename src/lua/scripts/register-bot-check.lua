@@ -32,7 +32,7 @@ function Get_server_info(txn, return_ip)
 				-- server always considered up if check not enabled
 				local server_up = true
 				if should_use_check then
-					server_up = txn.f:srv_is_up('servers/' .. backend_server_name)
+					server_up = txn.f:srv_is_up(string.format('servers/%s', backend_server_name)) == 1
 				end
 
 				-- if client requested non-default port and this backend disables extra ports, skip adding it when return_ip mode
@@ -72,6 +72,7 @@ function Get_server_info(txn, return_ip)
 			end
 		end
 	end
+	-- print(0)
 	return 0 -- for -m bool for xp, see https://docs.haproxy.org/3.2/configuration.html#7.1.1 0 = false, anythign else = true
 end
 

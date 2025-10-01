@@ -42,7 +42,7 @@ local function setup_servers()
 
 			local websrv = "websrv" .. counter
 			local server_name = "servers/" .. websrv
-			local new_server_entry = { h = websrv, cn = continent_code or "", xp = obj.xp }
+			local new_server_entry = { h = websrv, cn = continent_code or "", xp = obj.xp, c = obj.c }
 			local existing_map_value = backends_map:lookup(domain)
 			local entries = {}
 			if existing_map_value ~= nil then
