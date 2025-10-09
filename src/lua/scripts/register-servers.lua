@@ -5,7 +5,7 @@ local pow_difficulty = tonumber(os.getenv("POW_DIFFICULTY") or 18)
 local backends_map = Map.new('/etc/haproxy/map/backends.map', Map._str)
 local utils = require("utils")
 local map_space_split_rexex = "([^%s]+)%s+([^%s]+)"
-local check_options = " check observe layer4 inter 1s"
+local check_options = " check observe layer4 inter 120s"
 
 -- setup initial server backends based on hosts.map (JSON values required)
 local function setup_servers()
