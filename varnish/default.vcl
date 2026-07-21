@@ -33,6 +33,15 @@ sub vcl_recv {
 	# route all requests to haproxy
 	set req.backend_hint = haproxy;
 
+	if (req.http.X-Force-Cache) {
+	    unset req.http.X-Force-Cache;
+	    unset req.http.Cache-Control;
+	    unset req.http.Pragma;
+	    #unset req.http.If-Modified-Since;
+	    #unset req.http.If-None-Match;
+	    #unset req.http.Cookie;
+	}
+
 	# unfuck x-forwarded-for
 	if (req.http.X-Forwarded-For) {
 		set req.http.X-Forwarded-For = regsub(req.http.X-Forwarded-For, "^([^,]+),?.*$", "\1");
@@ -67,13 +76,24 @@ sub vcl_recv {
 	}
 
 	# honor cache control headers for "no-cache" or "no-store"
-	if (req.http.Cache-Control ~ "no-cache" || req.http.Cache-Control ~ "no-store" || req.url ~ "\.m3u8$") {
+	if (req.http.Cache-Control ~ "no-cache" || req.http.Cache-Control ~ "no-store") {
 		return (pass);
 	}
+
+	# rename cookie to aviod any cookie preventing cache (note: will impact Vary: cookie)
+	set req.http.X-Cookie = req.http.Cookie;
+	unset req.http.Cookie;
 
 }
 
 sub vcl_hash {
+
+	# add back cookie after vcl_recv to still pass to backend
+	if (req.http.X-Cookie) {
+		set req.http.Cookie = req.http.X-Cookie;
+		unset req.http.X-Cookie;
+	}
+
 	hash_data(req.url);
 	if (req.http.Host) {
 		hash_data(req.http.Host);
@@ -85,6 +105,14 @@ sub vcl_hash {
 
 ## caching behavior when fetching from backend
 sub vcl_backend_response {
+
+	if (bereq.url ~ "\.(m3u8|ts|m4s)(\?.*)?$") {
+		set beresp.storage = storage.fast;
+		set beresp.http.x-cache-t = "fast";
+	} else {
+		set beresp.storage = storage.large;
+		set beresp.http.x-cache-t = "large";
+	}
 
 	set beresp.http.x-url = bereq.url; # Set for ban lurker
 	set beresp.http.x-host = bereq.http.host; # Set for ban lurker

@@ -1,2 +1,2 @@
-localhost {"h":"127.0.0.1:10080","cn":"XX","xp":false,"c":true}
-localhost {"h":"127.0.0.1:18080","cn":"XX","xp":false,"c":true}
+localhost [{"h":"127.0.0.1:10080","cn":"XX","xp":false,"c":true}]
+panel.localhost.com [{"h":"127.0.0.1:10080","cn":"XX","xp":false,"c":true}]

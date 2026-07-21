@@ -28,9 +28,9 @@ RUN set -eux; \
 	mkdir /var/lib/haproxy; \
 	chown haproxy:haproxy /var/lib/haproxy
 
-ENV HAPROXY_VERSION 3.2.4
-ENV HAPROXY_URL https://www.haproxy.org/download/3.2/src/haproxy-3.2.4.tar.gz
-ENV HAPROXY_SHA256 5d4b2ee6fe56b8098ebb9c91a899d728f87d64cd7be8804d2ddcc5f937498c1d
+ENV HAPROXY_VERSION 3.4.0
+ENV HAPROXY_URL https://www.haproxy.org/download/3.4/src/haproxy-3.4.0.tar.gz
+ENV HAPROXY_SHA256 9298f565c2a9ba8a4e7f89c54be2c5d3fd960b5b304eb5515e15d29d2c15d4f7
 
 # see https://sources.debian.net/src/haproxy/jessie/debian/rules/ for some helpful navigation of the possible "make" arguments
 RUN set -eux; \
@@ -56,7 +56,7 @@ RUN set -eux; \
 		TARGET=linux-glibc \
 		USE_GETADDRINFO=1 \
 		USE_LUA=1 LUA_INC=/usr/include/lua5.4 \
-		USE_OPENSSL=1 \
+		USE_OPENSSL=1 USE_QUIC=1 \
 		USE_PCRE2=1 USE_PCRE2_JIT=1 \
 		USE_PROMEX=1 \
 	'; \

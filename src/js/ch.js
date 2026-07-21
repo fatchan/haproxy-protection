@@ -77,6 +77,7 @@ function postResponse(powResponse, captchaResponse) {
 	if (captchaResponse) {
 		body["h-captcha-response"] = captchaResponse;
 		body["g-recaptcha-response"] = captchaResponse;
+		body["bf-captcha-response"] = captchaResponse;
 	}
 	fetch("/.basedflare/bot-check", {
 		method: "POST",
@@ -123,7 +124,7 @@ const powFinished = new Promise((resolve) => {
 	const submitPow = (answer) => {
 		window.localStorage.setItem("_basedflare-pow-response", answer);
 		stopPow();
-		const dummyTime = 3500 - (Date.now() - start);
+		const dummyTime = 0; //3500 - (Date.now() - start);
 		window.setTimeout(() => {
 			if (document.getElementById("captcha")) {
 				resolve({
@@ -167,6 +168,14 @@ const powFinished = new Promise((resolve) => {
 		});
 
 		if (mode === "argon2" && !wasmSupported) {
+			const noscripts = document.querySelectorAll('noscript');
+			const second = noscripts[1];
+			if (second) {
+				const content = second.innerHTML || second.textContent;
+				const newDiv = document.createElement('div');
+				newDiv.innerHTML = content.substring(content.indexOf('<details>'));
+				second.insertAdjacentElement('afterend', newDiv);
+			}
 			return insertError(__("Browser does not support WebAssembly."));
 		}
 		const powOpts = {
